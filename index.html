@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>eHisaab – Split Expenses Easily</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#6c63ff" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x1F4B8;</text></svg>" />
+</head>
+<body>
+
+  <!-- ===== AUTH SCREEN ===== -->
+  <div id="authScreen" class="auth-screen hidden">
+    <div class="auth-left">
+      <div class="auth-brand">
+        <span class="auth-brand-icon">💸</span>
+        <span class="auth-brand-name">eHisaab</span>
+      </div>
+      <div class="auth-hero">
+        <h1 class="auth-hero-title">Split bills.<br/>Not friendships.</h1>
+        <p class="auth-hero-sub">Track shared expenses for trips, parties, and more. Know exactly who owes what — instantly.</p>
+        <div class="auth-features">
+          <div class="auth-feat"><span class="feat-icon">✈️</span><span>Trips & Travel</span></div>
+          <div class="auth-feat"><span class="feat-icon">🎉</span><span>Parties & Events</span></div>
+          <div class="auth-feat"><span class="feat-icon">🏠</span><span>Household Bills</span></div>
+          <div class="auth-feat"><span class="feat-icon">⚡</span><span>Instant Calculations</span></div>
+        </div>
+      </div>
+      <div class="auth-left-footer">
+        <div class="auth-stat"><strong>Free</strong><span>Forever</span></div>
+        <div class="auth-stat-sep"></div>
+        <div class="auth-stat"><strong>Offline</strong><span>No server needed</span></div>
+        <div class="auth-stat-sep"></div>
+        <div class="auth-stat"><strong>Private</strong><span>Data stays on device</span></div>
+      </div>
+    </div>
+    <div class="auth-right">
+      <div class="auth-card">
+        <!-- Tab Switch -->
+        <div class="auth-tabs">
+          <button class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">Sign In</button>
+          <button class="auth-tab" id="tabSignup" onclick="switchAuthTab('signup')">Sign Up</button>
+          <div class="auth-tab-indicator" id="authTabIndicator"></div>
+        </div>
+
+        <!-- Login Form -->
+        <form id="formLogin" class="auth-form" onsubmit="handleLogin(event)">
+          <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <div class="input-icon-wrap">
+              <span class="input-icon">📧</span>
+              <input type="email" id="loginEmail" class="form-input with-icon" placeholder="you@example.com" required autocomplete="email" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <div class="input-icon-wrap">
+              <span class="input-icon">🔒</span>
+              <input type="password" id="loginPassword" class="form-input with-icon" placeholder="Your password" required autocomplete="current-password" />
+              <button type="button" class="pw-toggle" onclick="togglePw('loginPassword', this)">👁</button>
+            </div>
+          </div>
+          <div id="loginError" class="auth-error hidden"></div>
+          <button type="submit" class="btn btn-auth">Sign In</button>
+          <p style="text-align:right;margin-top:.25rem"><button type="button" class="link-btn" onclick="openForgotPwModal()" style="font-size:.8rem">Forgot password?</button></p>
+          <p class="auth-switch">Don't have an account? <button type="button" class="link-btn" onclick="switchAuthTab('signup')">Sign Up free</button></p>
+        </form>
+
+        <!-- Signup Form -->
+        <form id="formSignup" class="auth-form hidden" onsubmit="handleSignup(event)">
+          <div class="form-group">
+            <label class="form-label">Full Name</label>
+            <div class="input-icon-wrap">
+              <span class="input-icon">👤</span>
+              <input type="text" id="signupName" class="form-input with-icon" placeholder="Your full name" required maxlength="40" autocomplete="name" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <div class="input-icon-wrap">
+              <span class="input-icon">📧</span>
+              <input type="email" id="signupEmail" class="form-input with-icon" placeholder="you@example.com" required autocomplete="email" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <div class="input-icon-wrap">
+              <span class="input-icon">🔒</span>
+              <input type="password" id="signupPassword" class="form-input with-icon" placeholder="Min. 6 characters" required minlength="6" autocomplete="new-password" />
+              <button type="button" class="pw-toggle" onclick="togglePw('signupPassword', this)">👁</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Confirm Password</label>
+            <div class="input-icon-wrap">
+              <span class="input-icon">🔒</span>
+              <input type="password" id="signupConfirm" class="form-input with-icon" placeholder="Repeat password" required autocomplete="new-password" />
+            </div>
+          </div>
+          <div id="signupError" class="auth-error hidden"></div>
+          <button type="submit" class="btn btn-auth">Create Account</button>
+          <p class="auth-switch">Already have an account? <button type="button" class="link-btn" onclick="switchAuthTab('login')">Sign In</button></p>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== APP SHELL (shown after login) ===== -->
+  <div id="appShell" class="hidden">
+
+  <!-- ===== HEADER ===== -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon">💸</span>
+        <span class="logo-text">eHisaab</span>
+      </div>
+      <div class="header-right">
+        <button class="btn btn-primary btn-new-group" id="btnNewGroup">
+          <span>+</span> New Group
+        </button>
+        <button class="btn-icon-header" id="darkModeBtn" onclick="toggleDarkMode()" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+        <div class="user-menu" id="userMenuWrap">
+          <button class="user-avatar-btn" id="userAvatarBtn" onclick="toggleUserMenu()">
+            <span id="userAvatarInitial"></span>
+          </button>
+          <div class="user-dropdown hidden" id="userDropdown">
+            <div class="user-dropdown-name" id="userDropdownName"></div>
+            <div class="user-dropdown-email" id="userDropdownEmail"></div>
+            <hr class="dropdown-sep" />
+            <button class="dropdown-item" onclick="openContactsModal()">&#x1F465; My Contacts</button>
+            <button class="dropdown-item" onclick="openChangePwModal()">&#x1F511; Change Password</button>
+            <button class="dropdown-item" onclick="openSetPINModal()">&#x1F512; Set PIN Lock</button>
+            <hr class="dropdown-sep" />
+            <button class="dropdown-item" onclick="exportData()">&#x2B07;&#xFE0F; Export Backup</button>
+            <button class="dropdown-item" onclick="triggerImport()">&#x2B06;&#xFE0F; Import Backup</button>
+            <button class="dropdown-item" onclick="requestNotifications()">&#x1F514; Enable Notifications</button>
+            <hr class="dropdown-sep" />
+            <button class="dropdown-item" onclick="logout()">&#x1F6AA; Sign Out</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== MAIN ===== -->
+  <main class="main">
+
+    <!-- HOME: Group list -->
+    <section id="viewHome" class="view active">
+      <div class="page-title-row">
+        <div>
+          <h2 class="page-title">Your Groups</h2>
+          <p class="subtitle">Track shared expenses for trips, parties &amp; more</p>
+        </div>
+        <button class="btn btn-primary btn-new-group-inline" onclick="openNewGroupModal()">+ New Group</button>
+      </div>
+      <div id="groupList" class="group-grid"></div>
+      <div id="emptyGroups" class="empty-state hidden">
+        <div class="empty-illustration">🧳</div>
+        <h3>No groups yet</h3>
+        <p>Create a group for your next trip or party to start splitting expenses.</p>
+        <button class="btn btn-primary mt-1" onclick="openNewGroupModal()">+ Create your first group</button>
+      </div>
+    </section>
+
+    <!-- GROUP DETAIL -->
+    <section id="viewGroup" class="view hidden">
+      <button class="back-btn" id="btnBack">
+        <span class="back-arrow">←</span> Back to Groups
+      </button>
+
+      <div class="group-hero">
+        <div class="group-hero-left">
+          <div class="group-emoji-large" id="detailEmoji"></div>
+          <div>
+            <h2 class="group-hero-name" id="detailGroupName"></h2>
+            <span class="group-type-badge" id="detailGroupType"></span>
+          </div>
+        </div>
+        <div class="group-actions">
+          <button class="btn btn-outline" id="btnAddMember">+ Member</button>
+          <button class="btn btn-outline btn-icon-sm" onclick="shareGroup()" title="Share group link">&#x1F517;</button>
+          <button class="btn btn-outline btn-icon-sm" onclick="printGroup()" title="Print summary">&#x1F5A8;&#xFE0F;</button>
+          <button class="btn btn-primary" id="btnAddExpense">+ Expense</button>
+        </div>
+      </div>
+
+      <!-- Stats bar -->
+      <div class="group-stats-bar" id="groupStatsBar"></div>
+
+      <!-- Tab Nav -->
+      <div class="tabs">
+        <button class="tab active" data-tab="expenses">🧾 Expenses</button>
+        <button class="tab" data-tab="balances">⚖️ Balances</button>
+        <button class="tab" data-tab="members">👥 Members</button>
+        <button class="tab" data-tab="analytics">📊 Analytics</button>
+      </div>
+
+      <!-- Tab: Expenses -->
+      <div id="tabExpenses" class="tab-content active">
+        <div class="exp-search-bar">
+          <input type="text" id="expSearchInput" class="form-input" placeholder="&#x1F50D; Search expenses..." oninput="filterExpenses(this.value)" />
+        </div>
+        <div id="expenseList" class="expense-list"></div>
+        <div id="emptyExpenses" class="empty-state hidden">
+          <div class="empty-illustration">🧾</div>
+          <h3>No expenses yet</h3>
+          <p>Add the first expense to start tracking who owes what.</p>
+          <button class="btn btn-primary mt-1" onclick="openAddExpenseModal()">+ Add Expense</button>
+        </div>
+      </div>
+
+      <!-- Tab: Balances -->
+      <div id="tabBalances" class="tab-content hidden">
+        <div id="drinkCostPanel"></div>
+        <div id="expListPanel"></div>
+        <div id="balanceSummary" class="balance-summary"></div>
+        <div class="settle-section">
+          <div class="section-label-row">
+            <span class="section-label">💳 Settlement Plan</span>
+            <span class="section-label-hint">Minimum transactions to settle all debts</span>
+          </div>
+          <div id="settlementList" class="settlement-list"></div>
+        </div>
+      </div>
+
+      <!-- Tab: Members -->
+      <div id="tabMembers" class="tab-content hidden">
+        <!-- Bulk-add members -->
+        <div class="bulk-add-wrap" id="bulkAddWrap">
+          <textarea id="bulkMembersInput" class="form-input form-textarea" placeholder="Add members (one per line)…" rows="3"></textarea>
+          <button class="btn btn-outline" style="width:100%;margin-top:.5rem" onclick="bulkAddMembers()">+ Add Members</button>
+        </div>
+        <div id="memberList" class="member-list"></div>
+        <!-- Party glass setup (shown for Party+alcohol groups) -->
+        <div id="partySetupSection"></div>
+      </div>
+
+      <!-- Tab: Analytics -->
+      <div id="tabAnalytics" class="tab-content hidden">
+        <div class="analytics-panel">
+          <div class="section-label-row">
+            <span class="section-label">&#x1F4CA; Spending by Member</span>
+            <button class="btn btn-outline" style="font-size:.75rem;padding:.3rem .75rem" onclick="addRecurringExpenses()">&#x1F501; Re-add Recurring</button>
+          </div>
+          <canvas id="spendingChart" style="width:100%;display:block"></canvas>
+        </div>
+        <div id="activityFeed" class="activity-feed"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===== MODALS ===== -->
+
+  <!-- New Group Modal -->
+  <div id="modalNewGroup" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-title-icon">🏷️</span>
+          <h3>Create New Group</h3>
+        </div>
+        <button class="modal-close" onclick="closeModal('modalNewGroup')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Group Name</label>
+          <input type="text" id="inputGroupName" class="form-input" placeholder="e.g. Goa Trip 2026" maxlength="40" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Currency</label>
+          <div class="currency-grid" id="currencyGrid">
+            <button type="button" class="currency-btn active" data-currency="&#x20B9;" onclick="selectCurrency('&#x20B9;')">&#x20B9; INR</button>
+            <button type="button" class="currency-btn" data-currency="$" onclick="selectCurrency('$')">$ USD</button>
+            <button type="button" class="currency-btn" data-currency="&#x20AC;" onclick="selectCurrency('&#x20AC;')">&#x20AC; EUR</button>
+            <button type="button" class="currency-btn" data-currency="&#xA3;" onclick="selectCurrency('&#xA3;')">&#xA3; GBP</button>
+            <button type="button" class="currency-btn" data-currency="&#xA5;" onclick="selectCurrency('&#xA5;')">&#xA5; JPY</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <div class="emoji-type-grid" id="groupTypeGrid">
+            <button class="type-btn active" data-type="Trip" data-emoji="✈️">✈️ Trip</button>
+            <button class="type-btn" data-type="Party" data-emoji="🎉">🎉 Party</button>
+            <button class="type-btn" data-type="Home" data-emoji="🏠">🏠 Home</button>
+            <button class="type-btn" data-type="Food" data-emoji="🍕">🍕 Food</button>
+            <button class="type-btn" data-type="Other" data-emoji="📦">📦 Other</button>
+          </div>
+        </div>
+
+        <!-- ── PARTY OPTIONS (shown only when Party is selected) ── -->
+        <div id="partyOptions" class="party-options hidden">
+
+          <!-- Step 1: Party type -->
+          <div class="party-step" id="partyStep1">
+            <label class="form-label">🎊 Party Type</label>
+            <div class="party-type-row">
+              <button class="party-type-btn active" data-ptype="non-alcohol" onclick="selectPartyType('non-alcohol')">
+                <span class="pty-icon">🥤</span>
+                <span class="pty-label">Non-Alcohol</span>
+                <span class="pty-sub">Juices, soft drinks, mocktails</span>
+              </button>
+              <button class="party-type-btn" data-ptype="alcohol" onclick="selectPartyType('alcohol')">
+                <span class="pty-icon">🍻</span>
+                <span class="pty-label">Alcohol</span>
+                <span class="pty-sub">Beer, wine, spirits &amp; more</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Step 2: Non-alcohol drink options -->
+          <div class="party-step hidden" id="partyNonAlcohol">
+            <label class="form-label">🥤 Select Beverages</label>
+            <div class="drink-grid" id="nonAlcoholGrid">
+              <label class="drink-chip"><input type="checkbox" value="Soft Drinks" /><span>🥤 Soft Drinks</span></label>
+              <label class="drink-chip"><input type="checkbox" value="Fresh Juice" /><span>🍹 Fresh Juice</span></label>
+              <label class="drink-chip"><input type="checkbox" value="Mocktails" /><span>🍸 Mocktails</span></label>
+              <label class="drink-chip"><input type="checkbox" value="Milkshakes" /><span>🥛 Milkshakes</span></label>
+              <label class="drink-chip"><input type="checkbox" value="Tea / Coffee" /><span>☕ Tea / Coffee</span></label>
+              <label class="drink-chip"><input type="checkbox" value="Mineral Water" /><span>💧 Water</span></label>
+              <label class="drink-chip"><input type="checkbox" value="Energy Drinks" /><span>⚡ Energy Drinks</span></label>
+              <label class="drink-chip"><input type="checkbox" value="Coconut Water" /><span>&#x1F965; Coconut Water</span></label>
+            </div>
+            <div class="custom-drink-row">
+              <input type="text" id="customNonAlcInput" class="form-input" placeholder="Custom drink name..." maxlength="25" style="flex:1;min-width:0" />
+              <button type="button" class="btn btn-outline" onclick="addCustomDrink('nonAlcohol')">+ Add</button>
+            </div>
+          </div>
+
+          <!-- Step 2: Alcohol options -->
+          <div class="party-step hidden" id="partyAlcohol">
+            <label class="form-label">🍹 Select Alcohol Types</label>
+            <div class="drink-grid" id="alcoholGrid">
+              <label class="drink-chip"><input type="checkbox" value="Beer" /><span>🍺 Beer</span></label>
+              <label class="drink-chip"><input type="checkbox" value="Wine" /><span>🍷 Wine</span></label>
+              <label class="drink-chip"><input type="checkbox" value="Whiskey" /><span>🥃 Whiskey</span></label>
+              <label class="drink-chip"><input type="checkbox" value="Vodka" /><span>🍸 Vodka</span></label>
+              <label class="drink-chip"><input type="checkbox" value="Rum" /><span>🍹 Rum</span></label>
+              <label class="drink-chip"><input type="checkbox" value="Gin" /><span>🫗 Gin</span></label>
+              <label class="drink-chip"><input type="checkbox" value="Tequila" /><span>🌵 Tequila</span></label>
+              <label class="drink-chip"><input type="checkbox" value="Champagne" /><span>🥂 Champagne</span></label>
+              <label class="drink-chip"><input type="checkbox" value="Cocktails" /><span>🍸 Cocktails</span></label>
+              <label class="drink-chip"><input type="checkbox" value="Brandy" /><span>&#x1F943; Brandy</span></label>
+            </div>
+            <div class="custom-drink-row">
+              <input type="text" id="customAlcInput" class="form-input" placeholder="Custom drink name..." maxlength="25" style="flex:1;min-width:0" />
+              <button type="button" class="btn btn-outline" onclick="addCustomDrink('alcohol')">+ Add</button>
+            </div>
+
+            <!-- Step 3: Glass count — moved to group detail (Members tab) -->
+          </div>
+
+        </div>
+      </div>
+      <div id="newGroupContactsNote" class="contacts-auto-note hidden"></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('modalNewGroup')">Cancel</button>
+        <button class="btn btn-primary" onclick="createGroup()">Create Group</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Member Modal -->
+  <div id="modalAddMember" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-title-icon">👤</span>
+          <h3>Add Member</h3>
+        </div>
+        <button class="modal-close" onclick="closeModal('modalAddMember')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Member Name</label>
+          <input type="text" id="inputNewMember" class="form-input" placeholder="e.g. Diana" maxlength="30" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('modalAddMember')">Cancel</button>
+        <button class="btn btn-primary" onclick="addMember()">Add Member</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Expense Modal -->
+  <div id="modalAddExpense" class="modal-overlay hidden">
+    <div class="modal modal-large">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-title-icon">💰</span>
+          <h3>Add Expense</h3>
+        </div>
+        <button class="modal-close" onclick="closeModal('modalAddExpense')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <input type="text" id="inputExpenseDesc" class="form-input" placeholder="e.g. Hotel booking" maxlength="60" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <div class="category-grid" id="categoryGrid">
+            <button type="button" class="cat-btn active" data-cat="" onclick="selectCategory('')">&#x1F3F7;&#xFE0F; General</button>
+            <button type="button" class="cat-btn" data-cat="food" onclick="selectCategory('food')">&#x1F355; Food</button>
+            <button type="button" class="cat-btn" data-cat="travel" onclick="selectCategory('travel')">&#x2708;&#xFE0F; Travel</button>
+            <button type="button" class="cat-btn" data-cat="stay" onclick="selectCategory('stay')">&#x1F3E8; Stay</button>
+            <button type="button" class="cat-btn" data-cat="fun" onclick="selectCategory('fun')">&#x1F389; Fun</button>
+            <button type="button" class="cat-btn" data-cat="drinks" onclick="selectCategory('drinks')">&#x1F37A; Drinks</button>
+            <button type="button" class="cat-btn" data-cat="shopping" onclick="selectCategory('shopping')">&#x1F6D2;&#xFE0F; Shopping</button>
+            <button type="button" class="cat-btn" data-cat="medical" onclick="selectCategory('medical')">&#x1F48A; Medical</button>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-col">
+            <label class="form-label">Amount (₹)</label>
+            <div class="input-icon-wrap">
+              <span class="input-icon" style="font-size:.9rem;font-weight:700;color:#6c63ff;">₹</span>
+              <input type="number" id="inputExpenseAmount" class="form-input with-icon" placeholder="0.00" min="0" step="0.01" />
+            </div>
+          </div>
+          <div class="form-col">
+            <label class="form-label">Date</label>
+            <input type="date" id="inputExpenseDate" class="form-input" />
+          </div>
+        </div>
+
+        <div class="form-group recurring-row">
+          <label class="recurring-label">
+            <input type="checkbox" id="chkRecurring" class="recurring-check" />
+            <span>&#x1F501; Mark as recurring (monthly)</span>
+          </label>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Paid by</label>
+          <select id="selectPaidBy" class="form-input form-select"></select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Split type</label>
+          <div class="split-type-row" id="splitTypeRow">
+            <button class="split-btn active" data-split="equal">⚖️ Equal</button>
+            <button class="split-btn" data-split="custom">✏️ Custom %</button>
+            <button class="split-btn" data-split="exact">💵 Exact ₹</button>
+          </div>
+          <div id="autoBottleSplitWrap" class="hidden">
+            <button type="button" class="btn-auto-bottle" onclick="autoSplitFromBottles()">🍶 Auto-split from bottle calculator</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Split among</label>
+          <div id="splitMembersContainer" class="split-members"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('modalAddExpense')">Cancel</button>
+        <button class="btn btn-primary" onclick="addExpense()">Add Expense</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settle Modal -->
+  <div id="modalSettle" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-title-icon">✅</span>
+          <h3>Record Settlement</h3>
+        </div>
+        <button class="modal-close" onclick="closeModal('modalSettle')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="settle-info-box" id="settleDescription"></div>
+        <div class="form-group">
+          <label class="form-label">Amount Paid (₹)</label>
+          <div class="input-icon-wrap">
+            <span class="input-icon" style="font-size:.9rem;font-weight:700;color:#6c63ff;">₹</span>
+            <input type="number" id="inputSettleAmount" class="form-input with-icon" min="0" step="0.01" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('modalSettle')">Cancel</button>
+        <button class="btn btn-success" onclick="recordSettlement()">✓ Mark Settled</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contacts Modal -->
+  <div id="modalContacts" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-title-icon">&#x1F465;</span>
+          <h3>My Contacts</h3>
+        </div>
+        <button class="modal-close" onclick="closeModal('modalContacts')">&#x2715;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-hint">People you split with often. They'll be auto-added as members when you create a new group.</p>
+        <button class="btn-import-contacts" onclick="importFromPhone()">&#x1F4F2; Import from Phone Contacts</button>
+        <div id="ctList" class="ct-list"></div>
+        <div class="ct-add-form">
+          <div class="ct-add-row">
+            <input type="text" id="ctNewName" class="form-input" placeholder="Name" maxlength="30" />
+            <input type="tel" id="ctNewPhone" class="form-input" placeholder="Phone (10 digits)" maxlength="13" />
+            <button class="btn btn-primary" onclick="addContact()">+ Add</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Change Password Modal -->
+  <div id="modalChangePw" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-title-icon">&#x1F511;</span>
+          <h3>Change Password</h3>
+        </div>
+        <button class="modal-close" onclick="closeModal('modalChangePw')">&#x2715;</button>
+      </div>
+      <div class="modal-body">
+        <form id="formChangePw" onsubmit="handleChangePw(event)">
+          <div class="form-group">
+            <label class="form-label">Current Password</label>
+            <input type="password" id="cpCurPw" class="form-input" placeholder="Current password" autocomplete="current-password" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">New Password</label>
+            <input type="password" id="cpNewPw" class="form-input" placeholder="At least 6 characters" autocomplete="new-password" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Confirm New Password</label>
+            <input type="password" id="cpConfirm" class="form-input" placeholder="Repeat new password" autocomplete="new-password" />
+          </div>
+          <div id="cpError" class="form-error hidden"></div>
+          <div class="modal-footer" style="padding:0;border:none;margin-top:.5rem">
+            <button type="button" class="btn btn-ghost" onclick="closeModal('modalChangePw')">Cancel</button>
+            <button type="submit" class="btn btn-primary">Change Password</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Set PIN Modal -->
+  <div id="modalSetPIN" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-title-icon">&#x1F512;</span>
+          <h3>Set PIN Lock</h3>
+        </div>
+        <button class="modal-close" onclick="closeModal('modalSetPIN')">&#x2715;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-hint">Set a 4&#x2013;6 digit PIN to lock eHisaab. You'll need it every time you open the app.</p>
+        <form id="formSetPIN" onsubmit="handleSetPIN(event)">
+          <div class="form-group">
+            <label class="form-label">PIN (4&#x2013;6 digits)</label>
+            <input type="number" id="setPinInput" class="form-input" placeholder="e.g. 1234" min="0" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Confirm PIN</label>
+            <input type="number" id="setPinConfirm" class="form-input" placeholder="Repeat PIN" min="0" />
+          </div>
+          <div id="setPinError" class="form-error hidden"></div>
+          <div class="modal-footer" style="padding:0;border:none;margin-top:.5rem">
+            <button type="button" class="btn btn-ghost" onclick="removePIN()">&#x1F513; Remove PIN</button>
+            <button type="submit" class="btn btn-primary">Set PIN</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  </div><!-- end #appShell -->
+
+  <!-- PIN Lock Overlay (body-level) -->
+  <div id="pinLockOverlay" class="pin-lock-overlay hidden">
+    <div class="pin-lock-box">
+      <div class="pin-lock-icon">&#x1F512;</div>
+      <h2 class="pin-lock-title">eHisaab</h2>
+      <p class="pin-lock-sub">Enter your PIN to continue</p>
+      <input type="password" id="pinLockInput" class="pin-lock-input" placeholder="&#x2022;&#x2022;&#x2022;&#x2022;" maxlength="6" inputmode="numeric" pattern="[0-9]*" onkeydown="validatePINLock(event)" />
+      <div id="pinLockError" class="pin-lock-error hidden">&#x274C; Wrong PIN. Try again.</div>
+      <button class="btn btn-primary" style="width:100%;margin-top:.75rem" onclick="validatePINLock(null)">Unlock</button>
+    </div>
+  </div>
+
+  <!-- Hidden file input for data import -->
+  <input type="file" id="importFileInput" accept=".json" class="hidden" onchange="importData(event)" />
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="app-footer">
+    <div class="app-footer-inner">
+      <div class="footer-brand">
+        <span class="footer-brand-icon">&#x1F4B8;</span>
+        <span class="footer-brand-name">eHisaab</span>
+      </div>
+      <p class="footer-tagline">Split bills. Not friendships.</p>
+      <div class="footer-links">
+        <span class="footer-link">&#x1F512; Your data stays on your device</span>
+        <span class="footer-sep">&bull;</span>
+        <span class="footer-link">&#x1F310; Works offline</span>
+        <span class="footer-sep">&bull;</span>
+        <span class="footer-link">&#x1F195; Free forever</span>
+      </div>
+      <div class="footer-dev">
+        Crafted with <span class="footer-heart">&#x2764;&#xFE0F;</span> by <strong>Joy</strong>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Forgot Password Modal (body-level, overlays auth screen) -->
+  <div id="modalForgotPw" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-title-icon">&#x1F511;</span>
+          <h3>Reset Password</h3>
+        </div>
+        <button class="modal-close" onclick="closeModal('modalForgotPw')">&#x2715;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-hint">Enter your registered email and choose a new password.</p>
+        <form id="formForgotPw" onsubmit="handleForgotPw(event)">
+          <div class="form-group">
+            <label class="form-label">Registered Email</label>
+            <div class="input-icon-wrap">
+              <span class="input-icon">&#x1F4E7;</span>
+              <input type="email" id="fpEmail" class="form-input with-icon" placeholder="you@example.com" required autocomplete="email" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">New Password</label>
+            <div class="input-icon-wrap">
+              <span class="input-icon">&#x1F512;</span>
+              <input type="password" id="fpNewPw" class="form-input with-icon" placeholder="Min. 6 characters" required minlength="6" autocomplete="new-password" />
+              <button type="button" class="pw-toggle" onclick="togglePw('fpNewPw', this)">&#x1F441;</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Confirm New Password</label>
+            <div class="input-icon-wrap">
+              <span class="input-icon">&#x1F512;</span>
+              <input type="password" id="fpConfirm" class="form-input with-icon" placeholder="Repeat password" required autocomplete="new-password" />
+            </div>
+          </div>
+          <div id="fpError" class="auth-error hidden"></div>
+          <div style="display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.25rem">
+            <button type="button" class="btn btn-ghost" onclick="closeModal('modalForgotPw')">Cancel</button>
+            <button type="submit" class="btn btn-primary">Reset Password</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
