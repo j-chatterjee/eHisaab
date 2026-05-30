@@ -1982,7 +1982,7 @@ function recordSettlement() {
   closeModal('modalSettle');
   renderBalances();
   renderStatsBar();
-  showToast('\u2705 Settlement recorded \u2014 ' + fmt(amount));
+  showToast('\u2705 Settlement recorded \u2014 ' + fmt(amount) + '. Tap \ud83d\udd17 Share & Sync to notify others.');
 }
 
 // ─── WHATSAPP BILL SENDER ─────────────────────────────────────
@@ -2791,25 +2791,94 @@ body{font-family:'Inter','Segoe UI',Arial,sans-serif;font-size:13px;color:#1e1b4
 // ─── SHARE GROUP LINK ────────────────────────────────────────
 function shareGroup() {
   const g = getGroup();
-  const data = { name: g.name, emoji: g.emoji, type: g.type, currency: g.currency, members: g.members, expenses: g.expenses };
+  // Include id so the recipient can sync updates back to this group
+  const data = {
+    schemaVersion: 2,
+    id:          g.id,
+    name:        g.name,
+    emoji:       g.emoji,
+    type:        g.type,
+    currency:    g.currency,
+    members:     g.members,
+    expenses:    g.expenses,
+    settlements: g.settlements || []
+  };
   try {
     const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
     const url = location.href.split('#')[0] + '#import=' + encoded;
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(url).then(() => showToast('\ud83d\udd17 Share link copied! Paste it to someone.')).catch(() => prompt('Copy this link:', url));
+      navigator.clipboard.writeText(url)
+        .then(() => showToast('\ud83d\udd17 Share link copied! Send it to group members.'))
+        .catch(() => prompt('Copy this link:', url));
     } else { prompt('Copy this link:', url); }
   } catch { showToast('\u26a0\ufe0f Could not generate link', 'error'); }
 }
+
 function checkImportLink() {
   const hash = location.hash;
   if (!hash.startsWith('#import=')) return;
   try {
     const data = JSON.parse(decodeURIComponent(escape(atob(hash.slice(8)))));
     if (!data.name || !data.members) return;
-    if (!confirm('Import group "' + data.name + '" with ' + data.members.length + ' members?')) { location.hash = ''; return; }
-    const g = { id: uid(), name: data.name, emoji: data.emoji || '\ud83d\udce6', type: data.type || 'Other', currency: data.currency || '\u20b9', members: data.members, expenses: data.expenses || [], settlements: [], partyDetails: null, activity: [] };
-    state.groups.unshift(g); saveGroups(); renderHome();
-    location.hash = ''; showToast('\u2705 Group "' + data.name + '" imported!');
+    location.hash = '';
+
+    // ── SYNC MODE: group with same id already exists ───────────
+    const existing = data.id && state.groups.find(g => g.id === data.id);
+    if (existing) {
+      const newExps  = (data.expenses    || []).filter(e => !existing.expenses.some(x => x.id === e.id));
+      const newSetts = (data.settlements || []).filter(s => !existing.settlements.some(x => x.id === s.id));
+      const total    = newExps.length + newSetts.length;
+
+      if (total === 0) {
+        showToast('\u2714\ufe0f Group "' + data.name + '" already up to date.');
+        return;
+      }
+
+      const msg = 'Sync updates for "' + data.name + '"?\n\n'
+        + (newExps.length  ? '+ ' + newExps.length  + ' new expense(s)\n'    : '')
+        + (newSetts.length ? '+ ' + newSetts.length + ' new settlement(s)\n' : '')
+        + '\nThis will merge changes into your existing group.';
+
+      if (!confirm(msg)) return;
+
+      newExps.forEach(e  => existing.expenses.push(e));
+      newSetts.forEach(s => existing.settlements.push(s));
+      saveGroups();
+
+      // If we are currently viewing this group, re-render
+      if (state.currentGroupId === existing.id) {
+        renderExpenses();
+        renderBalances();
+        renderStatsBar();
+      } else {
+        renderHome();
+      }
+      showToast('\u2705 Synced ' + total + ' update(s) into "' + data.name + '"!');
+      return;
+    }
+
+    // ── IMPORT MODE: new group ──────────────────────────────────
+    if (!confirm('Import group "' + data.name + '" with ' + data.members.length + ' members?')) return;
+    const g = {
+      id:          data.id || uid(),
+      name:        data.name,
+      emoji:       data.emoji || '\ud83d\udce6',
+      type:        data.type  || 'Other',
+      currency:    data.currency || '\u20b9',
+      members:     data.members,
+      expenses:    data.expenses    || [],
+      settlements: data.settlements || [],
+      partyDetails: null,
+      activity: []
+    };
+    // Auto-add current user as a member if not already in the group
+    if (!g.members.some(m => m.toLowerCase() === currentUser.name.toLowerCase())) {
+      g.members.unshift(currentUser.name);
+    }
+    state.groups.unshift(g);
+    saveGroups();
+    renderHome();
+    showToast('\u2705 Group "' + data.name + '" imported! Settle your share and share back.');
   } catch { location.hash = ''; }
 }
 
