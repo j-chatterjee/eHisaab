@@ -539,7 +539,7 @@ body {
   padding: .2rem .7rem; border-radius: 99px;
   margin-top: .3rem;
 }
-.group-actions { display: flex; gap: .6rem; flex-shrink: 0; }
+.group-actions { display: flex; gap: .6rem; flex-shrink: 0; flex-wrap: wrap; }
 
 /* Stats bar */
 .group-stats-bar {
@@ -1166,7 +1166,9 @@ body {
 
   .group-hero { flex-direction: column; align-items: flex-start; }
   .group-actions { width: 100%; }
-  .group-actions .btn:not(.btn-icon-sm) { flex: 1; justify-content: center; }
+  /* Primary row: + Member and + Expense side by side */
+  .group-actions .btn:not(.btn-icon-sm) { flex: 1; min-width: calc(50% - .3rem); justify-content: center; }
+  /* Secondary row: Share & Sync fills remaining, print stays auto */
   .group-actions .btn-icon-sm { flex: 0 0 auto; }
 
   .group-stats-bar { gap: .5rem; }
