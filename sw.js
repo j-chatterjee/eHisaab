@@ -1,5 +1,5 @@
 /* ================================================================
-   eHisaab � Service Worker  (auto-generated version token below)
+   eHisaab � Service Worker  (auto-generated version token below)
    Strategy:
      * App shell (HTML/CSS/JS)  -> NETWORK ONLY when online, cache as offline fallback
      * Google Fonts CSS         -> Network-first, cache fallback
@@ -16,7 +16,7 @@
 
 // Change this string on every deploy to bust old caches.
 // Format: YYYY-MM-DD.N  (increment N if you deploy multiple times in one day)
-const CACHE_VERSION = '2026-05-30.1';
+const CACHE_VERSION = '2026-05-30.2';
 
 const CACHE_NAME = 'ehisaab-shell-' + CACHE_VERSION;
 const FONT_CACHE = 'ehisaab-fonts-v2';
@@ -76,31 +76,26 @@ self.addEventListener('fetch', event => {
 });
 
 // Network-only for online; save to SW cache as offline fallback.
-// cache:'no-store' ensures the browser HTTP cache is bypassed.
+// Uses fetch(url, { cache: 'no-store' }) — NOT new Request({ mode:'navigate' })
+// because the Fetch spec forbids constructing a Request with mode:'navigate',
+// which would throw a TypeError and wrongly trigger the offline fallback.
 async function networkOnlyWithOfflineFallback(request) {
   try {
-    const networkReq = new Request(request.url, {
-      method:      request.method,
-      headers:     request.headers,
-      cache:       'no-store',
-      mode:        request.mode === 'navigate' ? 'navigate' : request.mode,
-      credentials: request.credentials,
-      redirect:    request.redirect
-    });
-    const response = await fetch(networkReq);
+    const response = await fetch(request.url, { cache: 'no-store' });
     if (response.ok) {
       const cache = await caches.open(CACHE_NAME);
       cache.put(request, response.clone());
     }
     return response;
   } catch {
+    // Truly offline — serve from SW cache if we have it
     const cached = await caches.match(request);
     if (cached) return cached;
     if (request.mode === 'navigate') {
       const fallback = await caches.match('./index.html');
       if (fallback) return fallback;
     }
-    return new Response('Offline - please check your connection.', {
+    return new Response('You are offline. Please check your connection.', {
       status: 503,
       headers: { 'Content-Type': 'text/plain' }
     });
