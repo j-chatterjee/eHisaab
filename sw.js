@@ -1,109 +1,134 @@
 /* ================================================================
-   eHisaab – Service Worker
+   eHisaab � Service Worker  (auto-generated version token below)
    Strategy:
-     • App shell (HTML/CSS/JS/manifest) → Network-first, fallback to cache
-     • Google Fonts CSS                 → Network-first, fallback to cache
-     • Font files                       → Cache-first (immutable by URL)
-     • Everything else                  → Network-first, fallback to cache
-   Bump CACHE_NAME version on each deploy to purge old caches.
+     * App shell (HTML/CSS/JS)  -> NETWORK ONLY when online, cache as offline fallback
+     * Google Fonts CSS         -> Network-first, cache fallback
+     * Font files               -> Cache-first (immutable content-hash URLs)
+     * Everything else          -> Network-first, cache fallback
+
+   HOW UPDATES WORK:
+     Every time sw.js is pushed with a new CACHE_VERSION, the browser
+     detects the changed SW file, installs the new SW, wipes the old
+     cache on activate, claims all tabs, and posts SW_UPDATED so the
+     app shows a "Reload for latest version" banner automatically.
+     You never need to manually clear cache or hard-refresh.
    ================================================================ */
 
-const CACHE_NAME    = 'ehisaab-v8';
-const FONT_CACHE    = 'ehisaab-fonts-v2';
+// Change this string on every deploy to bust old caches.
+// Format: YYYY-MM-DD.N  (increment N if you deploy multiple times in one day)
+const CACHE_VERSION = '2026-05-30.1';
 
-// Files that make up the app shell — cached on install
-const APP_SHELL = [
-  './',
-  './index.html',
-  './styles.css',
-  './app.js',
-  './manifest.json'
-];
+const CACHE_NAME = 'ehisaab-shell-' + CACHE_VERSION;
+const FONT_CACHE = 'ehisaab-fonts-v2';
 
-// ── Install: pre-cache the app shell ─────────────────────────
+// Install: activate immediately, skip pre-caching so first load always hits network
 self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(APP_SHELL))
-      .then(() => self.skipWaiting())   // activate immediately
-  );
+  self.skipWaiting();
 });
 
-// ── Activate: remove ALL old caches when version changes ─────
+// Activate: wipe every old cache, claim all open tabs, notify them to reload
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
-        keys.filter(k => k !== CACHE_NAME && k !== FONT_CACHE)
-            .map(k  => caches.delete(k))
-      )
-    ).then(() => self.clients.claim())  // take control immediately
+    caches.keys()
+      .then(keys => Promise.all(
+        keys
+          .filter(k => k !== CACHE_NAME && k !== FONT_CACHE)
+          .map(k  => caches.delete(k))
+      ))
+      .then(() => self.clients.claim())
+      .then(() => self.clients.matchAll({ includeUncontrolled: true, type: 'window' }))
+      .then(clients => {
+        clients.forEach(client =>
+          client.postMessage({ type: 'SW_UPDATED', version: CACHE_VERSION })
+        );
+      })
   );
 });
 
-// ── Fetch: serve from cache, fall back to network ────────────
+// Fetch
 self.addEventListener('fetch', event => {
   const { request } = event;
-  const url = new URL(request.url);
-
-  // Skip non-GET and cross-origin requests that aren't fonts
   if (request.method !== 'GET') return;
 
-  // Google Fonts CSS → network-first (so font updates are picked up)
-  if (url.hostname === 'fonts.googleapis.com') {
-    event.respondWith(networkFirstWithCache(request, FONT_CACHE));
-    return;
-  }
+  const url = new URL(request.url);
 
-  // Google Fonts files → cache-first (they're immutable by URL)
+  // Google Font FILES: cache-first (immutable content-hash URLs)
   if (url.hostname === 'fonts.gstatic.com') {
-    event.respondWith(cacheFirstWithNetwork(request, FONT_CACHE));
+    event.respondWith(cacheFirst(request, FONT_CACHE));
     return;
   }
 
-  // App shell files → network-first (get latest from server), fallback to cache when offline
+  // Google Fonts CSS: network-first
+  if (url.hostname === 'fonts.googleapis.com') {
+    event.respondWith(networkFirst(request, FONT_CACHE));
+    return;
+  }
+
+  // Own app files: network-only (cache: no-store bypasses browser HTTP cache too)
+  // Cache saved only as offline fallback.
   if (url.origin === self.location.origin) {
-    event.respondWith(networkFirstWithCache(request, CACHE_NAME));
+    event.respondWith(networkOnlyWithOfflineFallback(request));
     return;
   }
 
-  // Everything else → network-first
-  event.respondWith(networkFirstWithCache(request, CACHE_NAME));
+  // Everything else: network-first
+  event.respondWith(networkFirst(request, CACHE_NAME));
 });
 
-// ── Helpers ───────────────────────────────────────────────────
-
-/** Serve from cache; if not cached, fetch from network and cache it. */
-async function cacheFirstWithNetwork(request, cacheName) {
-  const cached = await caches.match(request);
-  if (cached) {
-    // Revalidate in background so next visit gets fresh content
-    fetchAndCache(request, cacheName).catch(() => {});
-    return cached;
-  }
-  return fetchAndCache(request, cacheName);
-}
-
-/** Try network; if offline, fall back to cache. */
-async function networkFirstWithCache(request, cacheName) {
+// Network-only for online; save to SW cache as offline fallback.
+// cache:'no-store' ensures the browser HTTP cache is bypassed.
+async function networkOnlyWithOfflineFallback(request) {
   try {
-    return await fetchAndCache(request, cacheName);
+    const networkReq = new Request(request.url, {
+      method:      request.method,
+      headers:     request.headers,
+      cache:       'no-store',
+      mode:        request.mode === 'navigate' ? 'navigate' : request.mode,
+      credentials: request.credentials,
+      redirect:    request.redirect
+    });
+    const response = await fetch(networkReq);
+    if (response.ok) {
+      const cache = await caches.open(CACHE_NAME);
+      cache.put(request, response.clone());
+    }
+    return response;
   } catch {
     const cached = await caches.match(request);
     if (cached) return cached;
-    // Last resort: return the cached index.html for navigation requests
     if (request.mode === 'navigate') {
-      return caches.match('./index.html');
+      const fallback = await caches.match('./index.html');
+      if (fallback) return fallback;
     }
+    return new Response('Offline - please check your connection.', {
+      status: 503,
+      headers: { 'Content-Type': 'text/plain' }
+    });
+  }
+}
+
+// Network-first; if network fails, serve from cache.
+async function networkFirst(request, cacheName) {
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      const cache = await caches.open(cacheName);
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch {
+    const cached = await caches.match(request);
+    if (cached) return cached;
     throw new Error('Network unavailable and no cache for: ' + request.url);
   }
 }
 
-/** Fetch from network and store in cache. */
-async function fetchAndCache(request, cacheName) {
+// Cache-first; if not in cache, fetch and cache it.
+async function cacheFirst(request, cacheName) {
+  const cached = await caches.match(request);
+  if (cached) return cached;
   const response = await fetch(request);
-  // Only cache valid, non-opaque responses
-  if (response.ok && response.type !== 'opaque') {
+  if (response.ok) {
     const cache = await caches.open(cacheName);
     cache.put(request, response.clone());
   }

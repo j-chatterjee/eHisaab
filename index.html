@@ -145,6 +145,7 @@
             <button class="dropdown-item" onclick="openContactsModal()">&#x1F465; My Contacts</button>
             <button class="dropdown-item" onclick="openChangePwModal()">&#x1F511; Change Password</button>
             <button class="dropdown-item" onclick="openSetPINModal()">&#x1F512; Set PIN Lock</button>
+            <button class="dropdown-item" onclick="openHelpModal()">&#x2753; How to Use</button>
             <hr class="dropdown-sep" />
             <button class="dropdown-item" onclick="exportData()">&#x2B07;&#xFE0F; Export Backup</button>
             <button class="dropdown-item" onclick="triggerImport()">&#x2B06;&#xFE0F; Import Backup</button>
@@ -661,6 +662,257 @@
 
   </div><!-- end #appShell -->
 
+  <!-- ===== HELP / TUTORIAL MODAL ===== -->
+  <div id="modalHelp" class="modal-overlay hidden">
+    <div class="modal modal-large help-modal">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-title-icon">❓</span>
+          <h3>How to Use eHisaab</h3>
+        </div>
+        <button class="modal-close" onclick="closeModal('modalHelp')">&#x2715;</button>
+      </div>
+      <div class="modal-body help-body">
+
+        <!-- Step tabs -->
+        <div class="help-tabs">
+          <button class="help-tab active" data-htab="0" onclick="switchHelpTab(0)">🚀 Get Started</button>
+          <button class="help-tab" data-htab="1" onclick="switchHelpTab(1)">👥 Groups</button>
+          <button class="help-tab" data-htab="2" onclick="switchHelpTab(2)">💸 Expenses</button>
+          <button class="help-tab" data-htab="3" onclick="switchHelpTab(3)">⚖️ Balances</button>
+          <button class="help-tab" data-htab="4" onclick="switchHelpTab(4)">⚙️ Settings</button>
+        </div>
+
+        <!-- Tab 0: Get Started -->
+        <div class="help-section active" data-hcontent="0">
+          <div class="help-hero">
+            <div class="help-hero-icon">💸</div>
+            <div class="help-hero-text">
+              <strong>eHisaab</strong> is a free, offline expense-splitting app. All data stays on your device — no internet needed after install.
+            </div>
+          </div>
+          <ol class="help-steps">
+            <li class="help-step">
+              <div class="hs-num">1</div>
+              <div class="hs-body">
+                <div class="hs-title">Sign Up / Sign In</div>
+                <div class="hs-desc">Open the app → enter your name, email and password → tap <strong>Sign Up</strong>. Next time just Sign In with the same email &amp; password.</div>
+              </div>
+            </li>
+            <li class="help-step">
+              <div class="hs-num">2</div>
+              <div class="hs-body">
+                <div class="hs-title">Import Contacts (optional)</div>
+                <div class="hs-desc">Tap your avatar (top right) → <strong>My Contacts</strong> → <strong>Import from Phone</strong>. This lets you auto-fill member names when creating groups.</div>
+              </div>
+            </li>
+            <li class="help-step">
+              <div class="hs-num">3</div>
+              <div class="hs-body">
+                <div class="hs-title">Create a Group</div>
+                <div class="hs-desc">Tap <strong>+ New Group</strong> → choose a name, currency, and category → select members → tap <strong>Create Group</strong>. <em>You are always added automatically.</em></div>
+              </div>
+            </li>
+            <li class="help-step">
+              <div class="hs-num">4</div>
+              <div class="hs-body">
+                <div class="hs-title">Add Expenses</div>
+                <div class="hs-desc">Inside the group → tap <strong>+ Add Expense</strong> → fill in description, amount, and how to split. The <strong>Paid by</strong> field defaults to <strong>Me</strong> (you) — change it if someone else paid → tap <strong>Save</strong>.</div>
+              </div>
+            </li>
+            <li class="help-step">
+              <div class="hs-num">5</div>
+              <div class="hs-body">
+                <div class="hs-title">Check &amp; Settle Balances</div>
+                <div class="hs-desc">Go to the <strong>Balances</strong> tab to see who owes what. Tap <strong>Settle</strong> next to a name once a payment is made.</div>
+              </div>
+            </li>
+          </ol>
+          <div class="help-tip">💡 <strong>Tip:</strong> Install as an app — tap <em>Add to Home Screen</em> in your browser for a native app experience.</div>
+        </div>
+
+        <!-- Tab 1: Groups -->
+        <div class="help-section" data-hcontent="1">
+          <div class="help-section-title">👥 Managing Groups</div>
+          <div class="help-card-grid">
+            <div class="help-card">
+              <div class="hc-icon">➕</div>
+              <div class="hc-title">Create a Group</div>
+              <div class="hc-desc">Tap <strong>+ New Group</strong>. Pick a name, currency (₹/$€£¥), and category (Trip / Party / Home / Food / Other). Your imported contacts appear with checkboxes — select who to add.</div>
+            </div>
+            <div class="help-card">
+              <div class="hc-icon">👤</div>
+              <div class="hc-title">Add Members Later</div>
+              <div class="hc-desc">Open the group → <strong>Members</strong> tab → type a name in the field → optionally add their WhatsApp number → tap <strong>Add</strong>.</div>
+            </div>
+            <div class="help-card">
+              <div class="hc-icon">📱</div>
+              <div class="hc-title">WhatsApp Numbers</div>
+              <div class="hc-desc">Members without a number show a <strong>+📱</strong> button. Tap it to add their number. Once saved, tap <strong>📲</strong> to send them a balance reminder on WhatsApp.</div>
+            </div>
+            <div class="help-card">
+              <div class="hc-icon">📦</div>
+              <div class="hc-title">Archive / Delete</div>
+              <div class="hc-desc">On the home screen, tap the <strong>archive</strong> icon on a group card to hide it. Use <strong>☐ Select</strong> to bulk-delete multiple groups at once.</div>
+            </div>
+            <div class="help-card">
+              <div class="hc-icon">🎉</div>
+              <div class="hc-title">Party Groups</div>
+              <div class="hc-desc">Choose <em>Party</em> as category to unlock the <strong>Bottle Calculator</strong> — enter drink types, bottle size, price, and glass counts per person for auto drink-cost splitting.</div>
+            </div>
+            <div class="help-card">
+              <div class="hc-icon">🗑️</div>
+              <div class="hc-title">Bulk Remove Members</div>
+              <div class="hc-desc">In the Members tab tap <strong>☐ Select</strong>, check names, then tap <strong>Remove Selected</strong>. Only removes from group — does not delete their expenses.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Expenses -->
+        <div class="help-section" data-hcontent="2">
+          <div class="help-section-title">💸 Adding &amp; Managing Expenses</div>
+          <ol class="help-steps">
+            <li class="help-step">
+              <div class="hs-num">1</div>
+              <div class="hs-body">
+                <div class="hs-title">Add an Expense</div>
+                <div class="hs-desc">Inside a group → tap <strong>+ Add Expense</strong> → enter description, amount, and date. The <strong>Paid by</strong> dropdown defaults to <strong>Me (your name)</strong> — select another member if they paid. Choose a category icon for quick recognition.</div>
+              </div>
+            </li>
+            <li class="help-step">
+              <div class="hs-num">2</div>
+              <div class="hs-body">
+                <div class="hs-title">Split Options</div>
+                <div class="hs-desc">
+                  <strong>Equal</strong> — divide evenly among all members.<br/>
+                  <strong>Exact ₹</strong> — type the exact amount each person owes.<br/>
+                  <strong>% Share</strong> — enter a percentage for each person.
+                </div>
+              </div>
+            </li>
+            <li class="help-step">
+              <div class="hs-num">3</div>
+              <div class="hs-body">
+                <div class="hs-title">Edit or Delete an Expense</div>
+                <div class="hs-desc">Tap any expense row → tap the <strong>✏️ Edit</strong> or <strong>🗑 Delete</strong> button in the detail view.</div>
+              </div>
+            </li>
+            <li class="help-step">
+              <div class="hs-num">4</div>
+              <div class="hs-body">
+                <div class="hs-title">Bulk Delete Expenses</div>
+                <div class="hs-desc">In the Expenses tab tap <strong>☐ Select</strong> → check expenses → tap <strong>🗑 Delete Selected</strong>. Useful for clearing test entries.</div>
+              </div>
+            </li>
+            <li class="help-step">
+              <div class="hs-num">5</div>
+              <div class="hs-body">
+                <div class="hs-title">Recurring Expenses</div>
+                <div class="hs-desc">Tick <strong>Mark as recurring</strong> when saving an expense. Later, in the Analytics tab tap <strong>🔁 Re-add Recurring</strong> to re-enter all recurring expenses in one tap.</div>
+              </div>
+            </li>
+            <li class="help-step">
+              <div class="hs-num">6</div>
+              <div class="hs-body">
+                <div class="hs-title">Search Expenses</div>
+                <div class="hs-desc">Use the 🔍 search bar in the Expenses tab to filter by description keyword.</div>
+              </div>
+            </li>
+          </ol>
+          <div class="help-tip">💡 <strong>Tip:</strong> If you use the Bottle Calculator for a Party group, <em>do not</em> add a separate drink expense manually — it will double-count.</div>
+        </div>
+
+        <!-- Tab 3: Balances -->
+        <div class="help-section" data-hcontent="3">
+          <div class="help-section-title">⚖️ Balances &amp; Settlements</div>
+          <div class="help-card-grid">
+            <div class="help-card">
+              <div class="hc-icon">📊</div>
+              <div class="hc-title">Member Balances Table</div>
+              <div class="hc-desc">The <strong>Balances</strong> tab shows every member with:<br/>• <em>Total Paid</em> — how much they paid for the group<br/>• <em>Net Balance</em> — green = gets back, red = owes.</div>
+            </div>
+            <div class="help-card">
+              <div class="hc-icon">💳</div>
+              <div class="hc-title">Settlement Plan</div>
+              <div class="hc-desc">Below the member table, the <strong>Settlement Plan</strong> shows the minimum number of payments needed to clear all debts. Tap <strong>Settle</strong> to mark a payment as done.</div>
+            </div>
+            <div class="help-card">
+              <div class="hc-icon">📲</div>
+              <div class="hc-title">Send WhatsApp Reminder</div>
+              <div class="hc-desc">Tap the <strong>📲</strong> button next to a settlement row to send an automatic WhatsApp message to that person with the amount they owe.</div>
+            </div>
+            <div class="help-card">
+              <div class="hc-icon">✅</div>
+              <div class="hc-title">Mark as Settled</div>
+              <div class="hc-desc">When someone pays, tap <strong>Settle</strong> → confirm the amount → tap <strong>Confirm Settlement</strong>. The balance updates instantly.</div>
+            </div>
+            <div class="help-card">
+              <div class="hc-icon">📈</div>
+              <div class="hc-title">Analytics</div>
+              <div class="hc-desc">The <strong>Analytics</strong> tab shows a bar chart of total spending per member and a full activity log of every change made to the group.</div>
+            </div>
+            <div class="help-card">
+              <div class="hc-icon">🧮</div>
+              <div class="hc-title">Stats Bar &amp; Debt Summary</div>
+              <div class="hc-desc">The top of every group shows 4 chips: <em>Total Spent</em>, <em>Expenses</em>, <em>Members</em>, and <em>Your Balance</em>. Below them a colour-coded row shows the full settlement plan at a glance — <span style="color:#dc2626">red = you owe</span>, <span style="color:#16a34a">green = you get back</span>, grey = between others.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 4: Settings -->
+        <div class="help-section" data-hcontent="4">
+          <div class="help-section-title">⚙️ Settings &amp; Security</div>
+          <ol class="help-steps">
+            <li class="help-step">
+              <div class="hs-num">🔒</div>
+              <div class="hs-body">
+                <div class="hs-title">Set a PIN Lock</div>
+                <div class="hs-desc">Avatar → <strong>Set PIN Lock</strong> → enter a 4–6 digit PIN. Next time you open the app, it will ask for your PIN before showing any data.</div>
+              </div>
+            </li>
+            <li class="help-step">
+              <div class="hs-num">🌙</div>
+              <div class="hs-body">
+                <div class="hs-title">Dark Mode</div>
+                <div class="hs-desc">Tap the 🌙 moon icon in the top header to switch between light and dark themes. The setting is remembered automatically.</div>
+              </div>
+            </li>
+            <li class="help-step">
+              <div class="hs-num">👥</div>
+              <div class="hs-body">
+                <div class="hs-title">Manage Contacts</div>
+                <div class="hs-desc">Avatar → <strong>My Contacts</strong> → import from your phone, or add contacts manually. These contacts auto-appear as checkboxes when creating new groups.</div>
+              </div>
+            </li>
+            <li class="help-step">
+              <div class="hs-num">⬇️</div>
+              <div class="hs-body">
+                <div class="hs-title">Export Backup</div>
+                <div class="hs-desc">Avatar → <strong>Export Backup</strong> → saves a <em>.json</em> file of all your groups and expenses. Keep it safe — it's your data insurance.</div>
+              </div>
+            </li>
+            <li class="help-step">
+              <div class="hs-num">⬆️</div>
+              <div class="hs-body">
+                <div class="hs-title">Import Backup</div>
+                <div class="hs-desc">Avatar → <strong>Import Backup</strong> → pick your <em>.json</em> file to restore data on a new device or after clearing browser data.</div>
+              </div>
+            </li>
+            <li class="help-step">
+              <div class="hs-num">🔔</div>
+              <div class="hs-body">
+                <div class="hs-title">Notifications</div>
+                <div class="hs-desc">Avatar → <strong>Enable Notifications</strong> → allow the browser permission. eHisaab will send reminders for pending settlements.</div>
+              </div>
+            </li>
+          </ol>
+          <div class="help-tip">💡 <strong>Tip:</strong> Export a backup before clearing your browser cache or switching devices. Your data is stored locally and will be lost if the browser data is cleared.</div>
+        </div>
+
+      </div><!-- end help-body -->
+    </div>
+  </div>
+
   <!-- PIN Lock Overlay (body-level) -->
   <div id="pinLockOverlay" class="pin-lock-overlay hidden">
     <div class="pin-lock-box">
@@ -745,27 +997,26 @@
   <!-- Toast -->
   <div id="toast" class="toast hidden"></div>
 
+  <!-- Update banner: shown when SW signals a new version is active -->
+  <div id="updateBanner" class="update-banner hidden">
+    <span>✨ New version available!</span>
+    <button onclick="window.location.reload(true)" class="update-banner-btn">Reload now</button>
+    <button onclick="document.getElementById('updateBanner').classList.add('hidden')" class="update-banner-close">✕</button>
+  </div>
+
   <script src="app.js"></script>
   <script>
-    // Register service worker for PWA offline support
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
-          .then(reg => {
-            // Check for updates every time the app is opened
-            reg.addEventListener('updatefound', () => {
-              const newSW = reg.installing;
-              newSW.addEventListener('statechange', () => {
-                if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
-                  // New version available — show a subtle toast if app is loaded
-                  if (typeof showToast === 'function') {
-                    showToast('\u2728 App updated! Refresh for the latest version.', 'info');
-                  }
-                }
-              });
-            });
-          })
           .catch(err => console.warn('SW registration failed:', err));
+
+        // Listen for SW_UPDATED message posted by the new SW on activate
+        navigator.serviceWorker.addEventListener('message', event => {
+          if (event.data && event.data.type === 'SW_UPDATED') {
+            document.getElementById('updateBanner').classList.remove('hidden');
+          }
+        });
       });
     }
   </script>

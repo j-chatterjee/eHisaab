@@ -109,6 +109,13 @@ let _expBulkMode   = false;       // Expense bulk-select mode
 let _memberBulkMode = false;      // Member bulk-select mode
 let _groupBulkMode  = false;      // Group bulk-select mode
 
+// Returns the actual member-name string in group g that corresponds to the
+// logged-in user (case-insensitive). Falls back to currentUser.name.
+function getMeInGroup(g) {
+  if (!g || !currentUser) return currentUser ? currentUser.name : '';
+  return g.members.find(m => m.toLowerCase() === currentUser.name.toLowerCase()) || currentUser.name;
+}
+
 // ─── AUTH SCREEN ──────────────────────────────────────────────
 function showAuthScreen() {
   document.getElementById('authScreen').classList.remove('hidden');
@@ -479,15 +486,27 @@ function renderStatsBar() {
     });
   }
 
-  const { balances } = calculateBalances(g);
-  // Case-insensitive lookup in case member name casing differs
-  const myKey = Object.keys(balances).find(k => k.toLowerCase() === currentUser.name.toLowerCase()) || currentUser.name;
-  const myBal = balances[myKey] || 0;
-  const rounded = Math.round(myBal * 100) / 100;
+  const { balances, settlements } = calculateBalances(g);
+  // Use getMeInGroup so we match the exact stored member name
+  const myName    = getMeInGroup(g);
+  const myBal     = balances[myName] || 0;
+  const myRounded = Math.round(myBal * 100) / 100;
   let myBalHtml;
-  if (rounded > 0.005)       myBalHtml = `<span class="stat-chip-value green">${fmt(rounded)}</span>`;
-  else if (rounded < -0.005) myBalHtml = `<span class="stat-chip-value red">-${fmt(-rounded)}</span>`;
-  else                       myBalHtml = `<span class="stat-chip-value" style="color:#9491b0">Settled</span>`;
+  if (myRounded > 0.005)       myBalHtml = `<span class="stat-chip-value green">+${fmt(myRounded)}</span>`;
+  else if (myRounded < -0.005) myBalHtml = `<span class="stat-chip-value red">-${fmt(-myRounded)}</span>`;
+  else                         myBalHtml = `<span class="stat-chip-value" style="color:#9491b0">Settled \u2713</span>`;
+
+  // Build mini debt rows using the same myName key
+  const debtLines = settlements.map(s => {
+    const fromMe = s.from === myName;
+    const toMe   = s.to   === myName;
+    if (fromMe) return `<span class="ds-row ds-owe">You \u2192 <strong>${escHtml(s.to)}</strong>: ${fmt(s.amount)}</span>`;
+    if (toMe)   return `<span class="ds-row ds-get"><strong>${escHtml(s.from)}</strong> \u2192 You: ${fmt(s.amount)}</span>`;
+    return `<span class="ds-row ds-other">${escHtml(s.from)} \u2192 ${escHtml(s.to)}: ${fmt(s.amount)}</span>`;
+  }).join('');
+  const debtSummary = settlements.length === 0
+    ? `<span class="ds-row ds-clear">\ud83c\udf89 All settled up!</span>`
+    : debtLines;
 
   document.getElementById('groupStatsBar').innerHTML = `
     <div class="stat-chip">
@@ -506,6 +525,7 @@ function renderStatsBar() {
       <div class="stat-chip-label">Your Balance</div>
       ${myBalHtml}
     </div>
+    <div class="stat-debt-summary">${debtSummary}</div>
   `;
 }
 
@@ -1718,7 +1738,14 @@ function openAddExpenseModal() {
   document.getElementById('inputExpenseAmount').value = '';
   document.getElementById('inputExpenseDate').value   = today();
   const sel = document.getElementById('selectPaidBy');
-  sel.innerHTML = g.members.map(m => `<option value="${escHtml(m)}">${escHtml(m)}</option>`).join('');
+  // Build options: "Me" first (pre-selected), then all other members
+  // Use getMeInGroup so the value matches the exact stored member name
+  const myName = getMeInGroup(g);
+  const meOption = `<option value="__me__" selected>Me (${escHtml(myName)})</option>`;
+  const otherOptions = g.members
+    .filter(m => m !== myName)
+    .map(m => `<option value="${escHtml(m)}">${escHtml(m)}</option>`).join('');
+  sel.innerHTML = meOption + otherOptions;
 
   // Check for bottle calculator data
   const pd = g.partyDetails;
@@ -1884,7 +1911,9 @@ function addExpense() {
   const desc   = document.getElementById('inputExpenseDesc').value.trim();
   const amount = parseFloat(document.getElementById('inputExpenseAmount').value);
   const date   = document.getElementById('inputExpenseDate').value || today();
-  const paidBy = document.getElementById('selectPaidBy').value;
+  // Resolve "__me__" to the actual member name stored in the group
+  let paidBy = document.getElementById('selectPaidBy').value;
+  if (paidBy === '__me__') paidBy = getMeInGroup(g);
 
   if (!desc)             { showToast('\u26a0\ufe0f Enter a description', 'error'); return; }
   if (!amount || amount <= 0) { showToast('\u26a0\ufe0f Enter a valid amount', 'error'); return; }
@@ -2005,6 +2034,17 @@ function handleChangePw(e) {
   if (nw !== cf) { errEl.textContent = 'Passwords do not match.'; errEl.classList.remove('hidden'); return; }
   users[currentUser.email].hash = simpleHash(nw); saveUsers(users);
   closeModal('modalChangePw'); showToast('\u2705 Password changed!');
+}
+
+// ─── HELP / TUTORIAL ──────────────────────────────────────────
+function openHelpModal() {
+  document.getElementById('userDropdown').classList.add('hidden');
+  switchHelpTab(0);
+  openModal('modalHelp');
+}
+function switchHelpTab(idx) {
+  document.querySelectorAll('.help-tab').forEach((t, i) => t.classList.toggle('active', i === idx));
+  document.querySelectorAll('.help-section').forEach((s, i) => s.classList.toggle('active', i === idx));
 }
 
 // ─── PIN LOCK ────────────────────────────────────────────────

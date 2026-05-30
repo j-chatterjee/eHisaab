@@ -560,6 +560,31 @@ body {
 .stat-chip-value.green { color: var(--green); }
 .stat-chip-value.red   { color: var(--red); }
 
+/* ── Debt summary bar (below the 4 chips) ── */
+.stat-debt-summary {
+  flex: 0 0 100%;           /* full width row */
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: .6rem 1rem;
+  box-shadow: var(--shadow-sm);
+  display: flex; flex-wrap: wrap; gap: .35rem .75rem;
+  align-items: center;
+  font-size: .78rem;
+}
+.ds-row {
+  display: inline-flex; align-items: center; gap: .3rem;
+  padding: .2rem .5rem; border-radius: 20px;
+  font-weight: 600; white-space: nowrap;
+}
+.ds-owe  { background: #fef2f2; color: #dc2626; }
+.ds-get  { background: #f0fdf4; color: #16a34a; }
+.ds-other { background: var(--bg); color: var(--text-2); font-weight: 500; }
+.ds-clear { color: var(--green); font-weight: 700; }
+[data-theme="dark"] .ds-owe  { background: #450a0a; color: #f87171; }
+[data-theme="dark"] .ds-get  { background: #052e16; color: #4ade80; }
+[data-theme="dark"] .ds-other { background: var(--surface-2, #2a2840); }
+
 /* ================================================================
    TABS
    ================================================================ */
@@ -1044,6 +1069,37 @@ body {
   from { opacity: 0; transform: translateX(-50%) translateY(14px); }
   to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
+
+/* ── Auto-update banner ── */
+.update-banner {
+  position: fixed; top: 0; left: 0; right: 0;
+  z-index: 10000;
+  background: linear-gradient(90deg, #6c63ff, #a78bfa);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  gap: .75rem; padding: .6rem 1rem;
+  font-size: .85rem; font-weight: 600;
+  box-shadow: 0 2px 12px rgba(108,99,255,.4);
+  animation: bannerSlide .3s ease;
+}
+@keyframes bannerSlide {
+  from { transform: translateY(-100%); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
+.update-banner-btn {
+  background: #fff; color: #6c63ff;
+  border: none; border-radius: 20px;
+  padding: .3rem .85rem; font-size: .8rem; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  transition: background .12s;
+}
+.update-banner-btn:hover { background: #f0eeff; }
+.update-banner-close {
+  background: none; border: none; color: rgba(255,255,255,.8);
+  cursor: pointer; font-size: 1rem; padding: .2rem .4rem;
+  border-radius: 4px; line-height: 1;
+}
+.update-banner-close:hover { color: #fff; background: rgba(255,255,255,.15); }
 
 /* ================================================================
    RESPONSIVE
@@ -2094,5 +2150,101 @@ body {
   /* Desktop: show member WA button always */
   .member-item .member-remove { opacity: 1; }
   .ct-select-list { max-height: 220px; }
+}
+
+/* ================================================================
+   HELP / TUTORIAL MODAL
+   ================================================================ */
+.help-modal { max-width: 580px; }
+.help-body  { padding: 0 !important; gap: 0 !important; }
+
+/* Tab strip */
+.help-tabs {
+  display: flex; gap: 0;
+  border-bottom: 2px solid var(--border);
+  overflow-x: auto; scrollbar-width: none;
+  flex-shrink: 0;
+}
+.help-tabs::-webkit-scrollbar { display: none; }
+.help-tab {
+  flex: 0 0 auto;
+  background: none; border: none; cursor: pointer;
+  font-family: inherit; font-size: .78rem; font-weight: 600;
+  color: var(--text-3); padding: .7rem .9rem;
+  border-bottom: 2.5px solid transparent;
+  margin-bottom: -2px; white-space: nowrap;
+  transition: color .12s, border-color .12s;
+}
+.help-tab.active { color: var(--p); border-bottom-color: var(--p); }
+.help-tab:hover:not(.active) { color: var(--text); background: var(--bg); }
+
+/* Section content */
+.help-section {
+  display: none; flex-direction: column; gap: 1.1rem;
+  padding: 1.25rem 1.4rem 1.5rem;
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+  flex: 1;
+}
+.help-section.active { display: flex; }
+
+.help-section-title {
+  font-size: 1rem; font-weight: 700; color: var(--text);
+  padding-bottom: .5rem; border-bottom: 1px solid var(--border);
+}
+
+/* Hero row */
+.help-hero {
+  display: flex; align-items: center; gap: 1rem;
+  background: var(--p-xlight); border-radius: var(--r);
+  padding: .9rem 1rem; border: 1.5px solid var(--p-light);
+}
+.help-hero-icon { font-size: 2rem; flex-shrink: 0; }
+.help-hero-text { font-size: .85rem; color: var(--text-2); line-height: 1.5; }
+
+/* Numbered steps */
+.help-steps { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: .8rem; }
+.help-step {
+  display: flex; align-items: flex-start; gap: .85rem;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); padding: .85rem 1rem;
+}
+.hs-num {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--gradient); color: #fff;
+  font-size: .8rem; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-top: .05rem;
+}
+.hs-body { flex: 1; }
+.hs-title { font-size: .875rem; font-weight: 700; color: var(--text); margin-bottom: .25rem; }
+.hs-desc  { font-size: .8rem; color: var(--text-2); line-height: 1.55; }
+
+/* Card grid */
+.help-card-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: .7rem;
+}
+.help-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); padding: .9rem;
+  display: flex; flex-direction: column; gap: .35rem;
+}
+.hc-icon  { font-size: 1.3rem; }
+.hc-title { font-size: .83rem; font-weight: 700; color: var(--text); }
+.hc-desc  { font-size: .77rem; color: var(--text-2); line-height: 1.5; }
+
+/* Tip callout */
+.help-tip {
+  background: #fefce8; border: 1.5px solid #fde68a;
+  border-radius: var(--r); padding: .75rem 1rem;
+  font-size: .8rem; color: #92400e; line-height: 1.5;
+}
+[data-theme="dark"] .help-tip { background: #2a2310; border-color: #78350f; color: #fcd34d; }
+
+/* Mobile */
+@media (max-width: 600px) {
+  .help-card-grid { grid-template-columns: 1fr; }
+  .help-tab { font-size: .72rem; padding: .6rem .65rem; }
+  .help-section { padding: 1rem; }
+  .help-modal { max-height: 96vh; max-height: 96dvh; }
 }
 
