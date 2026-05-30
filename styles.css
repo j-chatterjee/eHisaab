@@ -1916,6 +1916,15 @@ body {
 }
 .ct-select-item:hover { background: var(--p-xlight); border-color: var(--p-light); }
 .ct-select-item input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--p); flex-shrink: 0; cursor: pointer; }
+
+/* "You" row — locked in, slightly highlighted */
+.ct-you-row { background: var(--p-xlight); border-color: var(--p-light) !important; }
+.ct-you-row input { cursor: not-allowed; opacity: .6; }
+.ct-you-tag {
+  font-size: .68rem; font-weight: 700; color: var(--p);
+  background: var(--p-light); border-radius: 4px;
+  padding: .05rem .3rem; margin-left: .3rem; vertical-align: middle;
+}
 .ct-sel-av {
   width: 28px; height: 28px; border-radius: 50%;
   color: #fff; font-size: .75rem; font-weight: 700;

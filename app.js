@@ -480,7 +480,9 @@ function renderStatsBar() {
   }
 
   const { balances } = calculateBalances(g);
-  const myBal = balances[currentUser.name] || 0;
+  // Case-insensitive lookup in case member name casing differs
+  const myKey = Object.keys(balances).find(k => k.toLowerCase() === currentUser.name.toLowerCase()) || currentUser.name;
+  const myBal = balances[myKey] || 0;
   const rounded = Math.round(myBal * 100) / 100;
   let myBalHtml;
   if (rounded > 0.005)       myBalHtml = `<span class="stat-chip-value green">${fmt(rounded)}</span>`;
@@ -1516,15 +1518,26 @@ function openNewGroupModal() {
   const contacts = getContacts();
   const ctSection = document.getElementById('newGroupContactsSection');
   if (ctSection) {
-    if (contacts.length > 0) {
-      ctSection.className = 'new-group-contacts-section';
+    ctSection.className = 'new-group-contacts-section';
+    // Current user row (always shown, always checked, can't be deselected)
+    const youRow = '<div class="ct-select-item ct-you-row">' +
+      '<input type="checkbox" class="ct-select-check ct-you-check" value="' + escHtml(currentUser.name) + '" checked disabled />' +
+      '<div class="ct-sel-av" style="background:' + avatarColor(currentUser.name) + '">' + currentUser.name.charAt(0).toUpperCase() + '</div>' +
+      '<div class="ct-sel-info">' +
+        '<span class="ct-sel-name">' + escHtml(currentUser.name) + ' <span class="ct-you-tag">You</span></span>' +
+      '</div>' +
+    '</div>';
+    // Filter out current user from contacts to avoid duplicate
+    const otherContacts = contacts.filter(function(c) { return c.name.toLowerCase() !== currentUser.name.toLowerCase(); });
+    if (otherContacts.length > 0) {
       ctSection.innerHTML =
         '<div class="ct-select-hdr">' +
-          '<span>\ud83d\udccc Select members to add from contacts:</span>' +
+          '<span>\ud83d\udccc Members:</span>' +
           '<button type="button" class="link-btn ct-toggle-all" onclick="toggleAllContactChecks(this)">Deselect All</button>' +
         '</div>' +
         '<div class="ct-select-list">' +
-        contacts.map(function(c) {
+        youRow +
+        otherContacts.map(function(c) {
           return '<label class="ct-select-item">' +
             '<input type="checkbox" class="ct-select-check" value="' + escHtml(c.name) + '" checked />' +
             '<div class="ct-sel-av" style="background:' + avatarColor(c.name) + '">' + c.name.charAt(0).toUpperCase() + '</div>' +
@@ -1536,7 +1549,10 @@ function openNewGroupModal() {
         }).join('') +
         '</div>';
     } else {
-      ctSection.className = 'new-group-contacts-section hidden';
+      // No contacts other than self — still show the You row
+      ctSection.innerHTML =
+        '<div class="ct-select-hdr"><span>\ud83d\udccc Members:</span></div>' +
+        '<div class="ct-select-list">' + youRow + '</div>';
     }
   }
   openModal('modalNewGroup');
@@ -1574,7 +1590,12 @@ function createGroup() {
   document.querySelectorAll('#newGroupContactsSection .ct-select-check:checked').forEach(function(cb) {
     contactMembers.push(cb.value);
   });
-  const group = { id: uid(), name, type, emoji, currency: _selectedCurrency || '\u20b9', members: [...contactMembers], expenses: [], settlements: [], partyDetails, activity: [] };
+  // Always include the group creator as the first member
+  const allMembers = [currentUser.name];
+  contactMembers.forEach(function(m) {
+    if (m.toLowerCase() !== currentUser.name.toLowerCase()) allMembers.push(m);
+  });
+  const group = { id: uid(), name, type, emoji, currency: _selectedCurrency || '\u20b9', members: allMembers, expenses: [], settlements: [], partyDetails, activity: [] };
   state.groups.unshift(group);
   saveGroups();
   closeModal('modalNewGroup');
