@@ -103,6 +103,12 @@ let state = {
   pendingSettle: null
 };
 
+// ─── FEATURE FLAGS ───────────────────────────────────────────
+let _pendingBootAfterPIN = false; // PIN entered at boot before app is loaded
+let _expBulkMode   = false;       // Expense bulk-select mode
+let _memberBulkMode = false;      // Member bulk-select mode
+let _groupBulkMode  = false;      // Group bulk-select mode
+
 // ─── AUTH SCREEN ──────────────────────────────────────────────
 function showAuthScreen() {
   document.getElementById('authScreen').classList.remove('hidden');
@@ -295,7 +301,7 @@ function toggleUserMenu() {
   document.getElementById('userDropdown').classList.toggle('hidden');
 }
 
-function bootApp() {
+function bootApp(skipPin) {
   state.groups = loadGroups();
   // Populate user UI
   document.getElementById('userAvatarInitial').textContent = currentUser.name.charAt(0).toUpperCase();
@@ -305,7 +311,7 @@ function bootApp() {
   document.getElementById('userDropdownEmail').textContent = currentUser.email;
   showAppShell();
   applyDarkMode(getSettings().darkMode);
-  if (getSettings().pin) showPINLock();
+  if (getSettings().pin && !skipPin) showPINLock();
   renderHome();
   checkImportLink();
 }
@@ -322,9 +328,20 @@ function showView(name) {
 function renderHome() {
   showView('viewHome');
   state.currentGroupId = null;
+  // Reset bulk modes when returning home
+  _expBulkMode = false;
+  _memberBulkMode = false;
+
   const list  = document.getElementById('groupList');
   const empty = document.getElementById('emptyGroups');
   list.innerHTML = '';
+
+  // Update group bulk-select UI
+  const groupBulkToggle = document.getElementById('groupBulkToggleBtn');
+  if (groupBulkToggle) groupBulkToggle.textContent = _groupBulkMode ? '\u2715 Cancel' : '\u2610 Select';
+  const groupBulkBar = document.getElementById('groupBulkBar');
+  if (groupBulkBar) groupBulkBar.classList.toggle('hidden', !_groupBulkMode);
+
   const activeGroups   = state.groups.filter(g => !g.archived);
   const archivedGroups = state.groups.filter(g =>  g.archived);
   if (state.groups.length === 0) {
@@ -337,10 +354,13 @@ function renderHome() {
   function makeCard(g, isArchived) {
     const totalSpent = g.expenses.reduce((s, e) => s + parseFloat(e.amount), 0);
     const card = document.createElement('div');
-    card.className = 'group-card' + (isArchived ? ' group-card-archived' : '');
+    card.className = 'group-card' + (isArchived ? ' group-card-archived' : '') + (_groupBulkMode ? ' group-card-bulk' : '');
     card.innerHTML = `
-      <button class="group-card-delete" title="Delete group" onclick="deleteGroup('${g.id}', event)">\ud83d\uddd1</button>
-      <button class="group-card-archive" title="${isArchived ? 'Restore group' : 'Archive group'}" onclick="archiveGroup('${g.id}', event)">${isArchived ? '\u267b\ufe0f' : '\ud83d\udce6'}</button>
+      ${_groupBulkMode
+        ? `<label class="group-card-bulk-check-wrap" onclick="event.stopPropagation()"><input type="checkbox" class="group-bulk-check" value="${g.id}" onchange="updateGroupBulkCount()" /></label>`
+        : `<button class="group-card-delete" title="Delete group" onclick="deleteGroup('${g.id}', event)">\ud83d\uddd1</button>
+           <button class="group-card-archive" title="${isArchived ? 'Restore group' : 'Archive group'}" onclick="archiveGroup('${g.id}', event)">${isArchived ? '\u267b\ufe0f' : '\ud83d\udce6'}</button>`
+      }
       <span class="group-card-emoji">${g.emoji}</span>
       <div class="group-card-name">${escHtml(g.name)}</div>
       <div class="group-card-meta">
@@ -350,7 +370,9 @@ function renderHome() {
       ${totalSpent > 0 ? `<div style="font-size:.8rem;color:#9491b0;margin-bottom:.4rem;">Total: <strong style="color:#6c63ff">${fmt(totalSpent)}</strong></div>` : ''}
       <span class="group-card-badge">${g.emoji} ${escHtml(g.type)}</span>
     `;
-    card.addEventListener('click', () => openGroup(g.id));
+    if (!_groupBulkMode) {
+      card.addEventListener('click', () => openGroup(g.id));
+    }
     return card;
   }
   activeGroups.forEach(g => list.appendChild(makeCard(g, false)));
@@ -361,6 +383,27 @@ function renderHome() {
     list.appendChild(sep);
     archivedGroups.forEach(g => list.appendChild(makeCard(g, true)));
   }
+}
+
+// ─── GROUP BULK SELECT ────────────────────────────────────────
+function toggleGroupBulkMode() {
+  _groupBulkMode = !_groupBulkMode;
+  renderHome();
+}
+function updateGroupBulkCount() {
+  const n = document.querySelectorAll('.group-bulk-check:checked').length;
+  const el = document.getElementById('groupBulkCount');
+  if (el) el.textContent = n + ' selected';
+}
+function bulkDeleteGroups() {
+  const ids = [...document.querySelectorAll('.group-bulk-check:checked')].map(c => c.value);
+  if (ids.length === 0) { showToast('\u26a0\ufe0f Select at least one group', 'error'); return; }
+  if (!confirm('Delete ' + ids.length + ' group(s)? All expenses inside will be permanently lost.')) return;
+  state.groups = state.groups.filter(g => !ids.includes(g.id));
+  saveGroups();
+  _groupBulkMode = false;
+  renderHome();
+  showToast('\ud83d\uddd1 ' + ids.length + ' group' + (ids.length !== 1 ? 's' : '') + ' deleted');
 }
 
 // ─── GROUP DETAIL ─────────────────────────────────────────────
@@ -484,6 +527,12 @@ function renderExpenses() {
   const list  = document.getElementById('expenseList');
   const empty = document.getElementById('emptyExpenses');
 
+  // Update bulk-select UI
+  const expBulkToggle = document.getElementById('expBulkToggleBtn');
+  if (expBulkToggle) expBulkToggle.textContent = _expBulkMode ? '\u2715 Cancel' : '\u2610 Select';
+  const expBulkBar = document.getElementById('expBulkBar');
+  if (expBulkBar) expBulkBar.classList.toggle('hidden', !_expBulkMode);
+
   // Collect virtual drink expenses (auto-computed from bottle calculator)
   const pd = g.partyDetails;
   const virtualItems = [];
@@ -498,7 +547,10 @@ function renderExpenses() {
     });
   }
 
-  const manualExpenses = [...g.expenses].sort((a, b) => b.date.localeCompare(a.date));
+  // Apply search filter
+  const manualExpenses = [...g.expenses]
+    .filter(e => !_expSearch || e.description.toLowerCase().includes(_expSearch) || e.paidBy.toLowerCase().includes(_expSearch))
+    .sort((a, b) => b.date.localeCompare(a.date));
   const hasAny = virtualItems.length > 0 || manualExpenses.length > 0;
 
   if (!hasAny) {
@@ -510,7 +562,7 @@ function renderExpenses() {
   list.classList.remove('hidden');
   list.innerHTML = '';
 
-  // Virtual drink expense items (read-only)
+  // Virtual drink expense items (read-only, no bulk select)
   virtualItems.forEach(exp => {
     const item = document.createElement('div');
     item.className = 'expense-item expense-item-auto';
@@ -531,8 +583,9 @@ function renderExpenses() {
   // Manual expense items
   manualExpenses.forEach(exp => {
     const item = document.createElement('div');
-    item.className = 'expense-item';
+    item.className = 'expense-item' + (_expBulkMode ? ' expense-item-bulk' : '');
     item.innerHTML = `
+      ${_expBulkMode ? `<input type="checkbox" class="exp-bulk-check" data-id="${exp.id}" onchange="updateExpBulkCount()" />` : ''}
       <div class="expense-icon">${expenseIcon(exp.description)}</div>
       <div class="expense-info">
         <div class="expense-desc">${escHtml(exp.description)}</div>
@@ -541,11 +594,35 @@ function renderExpenses() {
       <div class="expense-right">
         <div class="expense-amount">${fmt(exp.amount)}</div>
         <div class="expense-date">${formatDate(exp.date)}</div>
-        <button class="expense-delete" onclick="deleteExpense('${exp.id}')" title="Delete">\ud83d\uddd1</button>
+        ${!_expBulkMode ? `<button class="expense-delete" onclick="deleteExpense('${exp.id}')" title="Delete">\ud83d\uddd1</button>` : ''}
       </div>
     `;
     list.appendChild(item);
   });
+}
+
+// ─── EXPENSE BULK SELECT ──────────────────────────────────────
+function toggleExpBulkMode() {
+  _expBulkMode = !_expBulkMode;
+  renderExpenses();
+}
+function updateExpBulkCount() {
+  const n = document.querySelectorAll('.exp-bulk-check:checked').length;
+  const el = document.getElementById('expBulkCount');
+  if (el) el.textContent = n + ' selected';
+}
+function bulkDeleteExpenses() {
+  const ids = [...document.querySelectorAll('.exp-bulk-check:checked')].map(c => c.dataset.id);
+  if (ids.length === 0) { showToast('\u26a0\ufe0f Select at least one expense', 'error'); return; }
+  if (!confirm('Delete ' + ids.length + ' expense(s)?')) return;
+  const g = getGroup();
+  g.expenses = g.expenses.filter(e => !ids.includes(e.id));
+  saveGroups();
+  _expBulkMode = false;
+  renderExpenses();
+  renderBalances();
+  renderStatsBar();
+  showToast('\ud83d\uddd1 ' + ids.length + ' expense' + (ids.length !== 1 ? 's' : '') + ' deleted');
 }
 
 function splitLabel(exp) {
@@ -733,19 +810,51 @@ function renderBalances() {
 
   const summary = document.getElementById('balanceSummary');
   summary.innerHTML = '';
+
+  // Calculate total actually paid by each member (for the "paid" column)
+  const totalPaidByMember = {};
+  g.members.forEach(m => { totalPaidByMember[m] = 0; });
+  g.expenses.forEach(exp => {
+    if (totalPaidByMember[exp.paidBy] !== undefined) totalPaidByMember[exp.paidBy] += parseFloat(exp.amount);
+  });
+  // Include virtual bottle expenses in paid totals
+  const pdBal = g.partyDetails;
+  if (pdBal?.partyType === 'alcohol') {
+    BOTTLE_DRINKS.forEach(d => {
+      if (!pdBal.drinks?.includes(d)) return;
+      const paidBy = pdBal.bottlePaidBy?.[d];
+      if (!paidBy || !pdBal.bottlePrice?.[d]) return;
+      if (totalPaidByMember[paidBy] !== undefined)
+        totalPaidByMember[paidBy] += (pdBal.bottleCount?.[d] || 1) * pdBal.bottlePrice[d];
+    });
+  }
+
+  // Section header
+  const hdr = document.createElement('div');
+  hdr.className = 'bal-summary-hdr';
+  hdr.innerHTML = `
+    <span class="bal-col-name">Member</span>
+    <span class="bal-col-paid">Total Paid</span>
+    <span class="bal-col-status">Net Balance</span>
+  `;
+  summary.appendChild(hdr);
+
+  // Show all members sorted: payers first (positive balance), then others
   Object.entries(balances).sort((a, b) => b[1] - a[1]).forEach(([name, amt]) => {
-    const r = Math.round(amt * 100) / 100;
+    const r    = Math.round(amt * 100) / 100;
+    const paid = totalPaidByMember[name] || 0;
     let pillClass, label;
-    if (r > 0.005)       { pillClass = 'pill-green';   label = `gets back ${fmt(r)}`; }
-    else if (r < -0.005) { pillClass = 'pill-red';     label = `owes ${fmt(-r)}`; }
-    else                 { pillClass = 'pill-neutral';  label = 'settled up \u2713'; }
+    if (r > 0.005)       { pillClass = 'pill-green';   label = `+${fmt(r)} (gets back)`; }
+    else if (r < -0.005) { pillClass = 'pill-red';     label = `\u2212${fmt(-r)} (owes)`; }
+    else                 { pillClass = 'pill-neutral';  label = 'settled \u2713'; }
     const item = document.createElement('div');
-    item.className = 'balance-item';
+    item.className = 'balance-item bal-item-detailed';
     item.innerHTML = `
       <div class="balance-person">
         <div class="b-avatar" style="background:${avatarColor(name)}">${name.charAt(0).toUpperCase()}</div>
-        <span>${escHtml(name)}</span>
+        <span class="b-name">${escHtml(name)}</span>
       </div>
+      <span class="bal-paid-amt">${paid > 0 ? fmt(paid) : '<span style="color:var(--text-3)">—</span>'}</span>
       <span class="balance-pill ${pillClass}">${label}</span>
     `;
     summary.appendChild(item);
@@ -782,8 +891,14 @@ function renderMembers() {
   if (!g) return;
   const list = document.getElementById('memberList');
   list.innerHTML = '';
+  // Update bulk-select UI
+  const memberBulkToggle = document.getElementById('memberBulkToggleBtn');
+  if (memberBulkToggle) memberBulkToggle.textContent = _memberBulkMode ? '\u2715 Cancel' : '\u2610 Select';
+  const memberBulkBar = document.getElementById('memberBulkBar');
+  if (memberBulkBar) memberBulkBar.classList.toggle('hidden', !_memberBulkMode);
+
   if (g.members.length === 0) {
-    list.innerHTML = '<div class="empty-state" style="padding:1rem 0"><div class="empty-illustration">👥</div><h3>No members yet</h3><p>Add members using the box above.</p></div>';
+    list.innerHTML = '<div class="empty-state" style="padding:1rem 0"><div class="empty-illustration">\ud83d\udc65</div><h3>No members yet</h3><p>Add members using the box above.</p></div>';
   } else {
     const { balances } = calculateBalances(g);
     g.members.forEach(m => {
@@ -807,21 +922,53 @@ function renderMembers() {
       if (bal > 0.005)       balHtml = `<span class="balance-pill pill-green member-bal">gets back ${fmt(bal)}</span>`;
       else if (bal < -0.005) balHtml = `<span class="balance-pill pill-red member-bal">owes ${fmt(-bal)}</span>`;
       else if (inv > 0)      balHtml = `<span class="balance-pill pill-neutral member-bal">settled \u2713</span>`;
+      // WhatsApp button
+      const phone = getMemberPhone(m);
+      const waBtn = phone
+        ? `<button class="btn-wa-send" onclick="sendWhatsAppToMember('${escHtml(m)}')" title="Send WhatsApp to ${escHtml(m)}">\ud83d\udcf2</button>`
+        : `<button class="btn-wa-add" onclick="openAddMemberWAModal('${escHtml(m)}')" title="Add WhatsApp number">+\ud83d\udcf1</button>`;
       const item = document.createElement('div');
-      item.className = 'member-item';
+      item.className = 'member-item' + (_memberBulkMode ? ' member-item-bulk' : '');
       item.innerHTML = `
+        ${_memberBulkMode ? `<input type="checkbox" class="member-bulk-check" value="${escHtml(m)}" onchange="updateMemberBulkCount()" />` : ''}
         <div class="member-avatar" style="background:${avatarColor(m)}">${m.charAt(0).toUpperCase()}</div>
         <div class="member-info">
           <div class="member-name">${escHtml(m)}</div>
-          <div class="member-meta">${inv} expense${inv !== 1 ? 's' : ''} · paid ${fmt(paid)}</div>
+          <div class="member-meta">${inv} expense${inv !== 1 ? 's' : ''} \u00b7 paid ${fmt(paid)}</div>
         </div>
         ${balHtml}
-        <button class="member-remove" onclick="deleteMember('${escHtml(m)}')" title="Remove">\ud83d\uddd1</button>
+        ${waBtn}
+        ${!_memberBulkMode ? `<button class="member-remove" onclick="deleteMember('${escHtml(m)}')" title="Remove">\ud83d\uddd1</button>` : ''}
       `;
       list.appendChild(item);
     });
   }
   renderPartySetupInGroup();
+}
+
+// ─── MEMBER BULK SELECT ────────────────────────────────────────
+function toggleMemberBulkMode() {
+  _memberBulkMode = !_memberBulkMode;
+  renderMembers();
+}
+function updateMemberBulkCount() {
+  const n = document.querySelectorAll('.member-bulk-check:checked').length;
+  const el = document.getElementById('memberBulkCount');
+  if (el) el.textContent = n + ' selected';
+}
+function bulkDeleteMembers() {
+  const checked = [...document.querySelectorAll('.member-bulk-check:checked')].map(c => c.value);
+  if (checked.length === 0) { showToast('\u26a0\ufe0f Select at least one member', 'error'); return; }
+  if (!confirm('Remove ' + checked.length + ' member(s)? This will not delete their expenses.')) return;
+  const g = getGroup();
+  checked.forEach(name => { g.members = g.members.filter(m => m !== name); });
+  logActivity(g, '\ud83d\uddd1 ' + checked.length + ' member(s) removed (bulk)');
+  saveGroups();
+  _memberBulkMode = false;
+  renderMembers();
+  renderStatsBar();
+  renderPartySetupInGroup();
+  showToast('\ud83d\uddd1 ' + checked.length + ' member' + (checked.length !== 1 ? 's' : '') + ' removed');
 }
 
 function bulkAddMembers() {
@@ -1365,20 +1512,43 @@ function openNewGroupModal() {
   // Reset currency selector
   _selectedCurrency = '\u20b9';
   document.querySelectorAll('.currency-btn').forEach(b => b.classList.toggle('active', b.dataset.currency === '\u20b9'));
-  // Show contacts auto-add note
+  // Show contacts with checkboxes for member selection
   const contacts = getContacts();
-  const ctNote = document.getElementById('newGroupContactsNote');
-  if (ctNote) {
+  const ctSection = document.getElementById('newGroupContactsSection');
+  if (ctSection) {
     if (contacts.length > 0) {
-      ctNote.className = 'contacts-auto-note';
-      ctNote.innerHTML = '\ud83d\udccb <strong>' + contacts.length + ' contact' + (contacts.length !== 1 ? 's' : '') + '</strong> will be auto-added as members: ' + contacts.map(function(c) { return escHtml(c.name); }).join(', ');
+      ctSection.className = 'new-group-contacts-section';
+      ctSection.innerHTML =
+        '<div class="ct-select-hdr">' +
+          '<span>\ud83d\udccc Select members to add from contacts:</span>' +
+          '<button type="button" class="link-btn ct-toggle-all" onclick="toggleAllContactChecks(this)">Deselect All</button>' +
+        '</div>' +
+        '<div class="ct-select-list">' +
+        contacts.map(function(c) {
+          return '<label class="ct-select-item">' +
+            '<input type="checkbox" class="ct-select-check" value="' + escHtml(c.name) + '" checked />' +
+            '<div class="ct-sel-av" style="background:' + avatarColor(c.name) + '">' + c.name.charAt(0).toUpperCase() + '</div>' +
+            '<div class="ct-sel-info">' +
+              '<span class="ct-sel-name">' + escHtml(c.name) + '</span>' +
+              (c.phone ? '<span class="ct-sel-phone">\ud83d\udcf1 +91 ' + c.phone.replace(/\D/g,'').slice(-10) + '</span>' : '') +
+            '</div>' +
+          '</label>';
+        }).join('') +
+        '</div>';
     } else {
-      ctNote.className = 'contacts-auto-note hidden';
+      ctSection.className = 'new-group-contacts-section hidden';
     }
   }
   openModal('modalNewGroup');
   setTimeout(() => document.getElementById('inputGroupName').focus(), 60);
 }
+function toggleAllContactChecks(btn) {
+  const checks = document.querySelectorAll('#newGroupContactsSection .ct-select-check');
+  const allChecked = [...checks].every(c => c.checked);
+  checks.forEach(c => { c.checked = !allChecked; });
+  btn.textContent = allChecked ? 'Select All' : 'Deselect All';
+}
+
 function createGroup() {
   const name = document.getElementById('inputGroupName').value.trim();
   if (!name) { showToast('\u26a0\ufe0f Enter a group name', 'error'); return; }
@@ -1400,7 +1570,10 @@ function createGroup() {
     };
   }
 
-  const contactMembers = getContacts().map(c => c.name);
+  const contactMembers = [];
+  document.querySelectorAll('#newGroupContactsSection .ct-select-check:checked').forEach(function(cb) {
+    contactMembers.push(cb.value);
+  });
   const group = { id: uid(), name, type, emoji, currency: _selectedCurrency || '\u20b9', members: [...contactMembers], expenses: [], settlements: [], partyDetails, activity: [] };
   state.groups.unshift(group);
   saveGroups();
@@ -1421,9 +1594,61 @@ function deleteGroup(id, e) {
   showToast('\ud83d\uddd1 Group deleted');
 }
 
+// ─── MEMBER PHONE HELPERS ─────────────────────────────────────
+function getMemberPhone(memberName) {
+  // 1. Check contacts
+  const cp = getContactPhone(memberName);
+  if (cp) return cp;
+  // 2. Check current group's memberPhones map
+  if (state.currentGroupId) {
+    const g = getGroup();
+    if (g && g.memberPhones && g.memberPhones[memberName]) return g.memberPhones[memberName];
+  }
+  return '';
+}
+
+let _memberWATarget = '';
+function openAddMemberWAModal(memberName) {
+  _memberWATarget = memberName;
+  document.getElementById('memberWAName').textContent = memberName;
+  document.getElementById('memberWAInput').value = '';
+  openModal('modalMemberWA');
+  setTimeout(() => document.getElementById('memberWAInput').focus(), 60);
+}
+function saveMemberWA() {
+  const phone = document.getElementById('memberWAInput').value.trim().replace(/\D/g, '').slice(-10);
+  if (!phone || phone.length < 10) { showToast('\u26a0\ufe0f Enter a valid 10-digit number', 'error'); return; }
+  const g = getGroup();
+  if (!g) return;
+  if (!g.memberPhones) g.memberPhones = {};
+  g.memberPhones[_memberWATarget] = phone;
+  saveGroups();
+  closeModal('modalMemberWA');
+  renderMembers();
+  showToast('\u2705 WhatsApp number saved for ' + _memberWATarget);
+}
+function sendWhatsAppToMember(memberName) {
+  const phone = getMemberPhone(memberName);
+  if (!phone) { showToast('\u26a0\ufe0f No number saved for ' + memberName, 'error'); return; }
+  const g = getGroup();
+  const { balances } = calculateBalances(g);
+  const bal = Math.round((balances[memberName] || 0) * 100) / 100;
+  let msg;
+  if (bal < -0.005) {
+    msg = 'Hi ' + memberName + '! \ud83d\udc4b\n\neHisaab \ud83d\udcb8 Reminder\n\n\ud83d\udccb Group: ' + (g ? g.name : '') + '\n\ud83d\udcb3 You owe ' + fmt(-bal) + '\n\nPlease transfer at your earliest convenience. \ud83d\ude4f';
+  } else if (bal > 0.005) {
+    msg = 'Hi ' + memberName + '! \ud83d\udc4b\n\neHisaab \ud83d\udcb8 Update\n\n\ud83d\udccb Group: ' + (g ? g.name : '') + '\n\u2705 You are owed ' + fmt(bal);
+  } else {
+    msg = 'Hi ' + memberName + '! \ud83d\udc4b\n\neHisaab \ud83d\udcb8\n\n\ud83d\udccb Group: ' + (g ? g.name : '') + '\n\u2714\ufe0f All settled up!';
+  }
+  window.open('https://wa.me/91' + phone + '?text=' + encodeURIComponent(msg), '_blank', 'noopener,noreferrer');
+}
+
 // ─── MEMBER ───────────────────────────────────────────────────
 function openAddMemberModal() {
   document.getElementById('inputNewMember').value = '';
+  const phoneInput = document.getElementById('inputNewMemberPhone');
+  if (phoneInput) phoneInput.value = '';
   openModal('modalAddMember');
   setTimeout(() => document.getElementById('inputNewMember').focus(), 60);
 }
@@ -1435,7 +1660,13 @@ function addMember() {
     showToast('\u26a0\ufe0f Member already exists', 'error'); return;
   }
   g.members.push(name);
-  logActivity(g, '👤 ' + name + ' added as member');
+  // Save optional WhatsApp number entered during add
+  const phoneRaw = (document.getElementById('inputNewMemberPhone')?.value || '').trim().replace(/\D/g,'').slice(-10);
+  if (phoneRaw && phoneRaw.length >= 10) {
+    if (!g.memberPhones) g.memberPhones = {};
+    g.memberPhones[name] = phoneRaw;
+  }
+  logActivity(g, '\ud83d\udc64 ' + name + ' added as member');
   saveGroups();
   closeModal('modalAddMember');
   renderMembers();
@@ -1707,9 +1938,11 @@ function recordSettlement() {
 // ─── WHATSAPP BILL SENDER ─────────────────────────────────────
 function sendWhatsApp(fromName, toName, amount) {
   const g = getGroup();
-  const phone = getContactPhone(fromName);
+  // Check contacts first, then group's memberPhones
+  let phone = getContactPhone(fromName);
+  if (!phone && g && g.memberPhones) phone = g.memberPhones[fromName] || '';
   if (!phone) {
-    showToast('\u26a0\ufe0f No phone saved for ' + fromName + '. Add it in My Contacts.', 'error');
+    showToast('\u26a0\ufe0f No phone saved for ' + fromName + '. Use the +\ud83d\udcf1 button in Members tab to add.', 'error');
     return;
   }
   const intlPhone = '91' + phone;
@@ -1781,7 +2014,12 @@ function removePIN() {
 }
 function showPINLock() {
   const overlay = document.getElementById('pinLockOverlay');
-  if (overlay) { overlay.classList.remove('hidden'); document.getElementById('pinLockInput').value = ''; document.getElementById('pinLockError').classList.add('hidden'); }
+  if (overlay) {
+    overlay.classList.remove('hidden');
+    document.getElementById('pinLockInput').value = '';
+    document.getElementById('pinLockError').classList.add('hidden');
+    setTimeout(() => document.getElementById('pinLockInput').focus(), 100);
+  }
 }
 function validatePINLock(e) {
   if (e && e.key && e.key !== 'Enter') return;
@@ -1789,6 +2027,10 @@ function validatePINLock(e) {
   const s   = getSettings();
   if (!s.pin || s.pin === simpleHash(pin)) {
     document.getElementById('pinLockOverlay').classList.add('hidden');
+    if (_pendingBootAfterPIN) {
+      _pendingBootAfterPIN = false;
+      bootApp(true); // skip showing PIN again
+    }
   } else {
     const errEl = document.getElementById('pinLockError');
     errEl.textContent = '\u274c Wrong PIN. Try again.'; errEl.classList.remove('hidden');
@@ -2550,7 +2792,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const saved = JSON.parse(localStorage.getItem(SESSION_KEY));
     if (saved && saved.email && saved.name) {
       currentUser = saved;
-      bootApp();
+      const _s = getSettings();
+      if (_s.pin) {
+        // If PIN is set, show PIN lock immediately — don't reveal app or auth screen
+        _pendingBootAfterPIN = true;
+        applyDarkMode(_s.darkMode);
+        showPINLock();
+      } else {
+        bootApp();
+      }
     } else {
       showAuthScreen();
     }

@@ -1687,10 +1687,13 @@ body {
    ================================================================ */
 .exp-search-bar {
   margin-bottom: .75rem;
+  display: flex; gap: .5rem; align-items: center;
 }
 .exp-search-bar .form-input {
   font-size: .875rem;
   padding: .55rem .85rem;
+  flex: 1;
+  margin-bottom: 0 !important;
 }
 
 /* ================================================================
@@ -1871,3 +1874,205 @@ body {
 }
 .footer-dev strong { color: #fff; font-weight: 700; }
 .footer-heart { font-style: normal; }
+
+/* ================================================================
+   NEW GROUP – CONTACT SELECTOR  (Feature 2)
+   ================================================================ */
+.new-group-contacts-section {
+  border-top: 1px solid var(--border);
+  padding: .85rem 1.25rem 1rem;
+  background: #faf9ff;
+}
+[data-theme="dark"] .new-group-contacts-section { background: #1e1c30; }
+
+.ct-select-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: .8rem; font-weight: 600; color: var(--text-2);
+  margin-bottom: .6rem;
+}
+.ct-toggle-all {
+  font-size: .75rem; color: var(--p); cursor: pointer;
+  background: none; border: none; font-family: inherit; font-weight: 600;
+  padding: .15rem .35rem; border-radius: 6px;
+}
+.ct-toggle-all:hover { background: var(--p-light); }
+
+.ct-select-list {
+  display: flex; flex-direction: column; gap: .35rem;
+  max-height: 180px; overflow-y: auto;
+}
+.ct-select-item {
+  display: flex; align-items: center; gap: .65rem;
+  padding: .45rem .6rem; border-radius: var(--r-sm);
+  cursor: pointer; border: 1.5px solid transparent;
+  transition: background .1s, border-color .1s;
+}
+.ct-select-item:hover { background: var(--p-xlight); border-color: var(--p-light); }
+.ct-select-item input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--p); flex-shrink: 0; cursor: pointer; }
+.ct-sel-av {
+  width: 28px; height: 28px; border-radius: 50%;
+  color: #fff; font-size: .75rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.ct-sel-info { flex: 1; min-width: 0; }
+.ct-sel-name { font-size: .83rem; font-weight: 600; display: block; }
+.ct-sel-phone { font-size: .72rem; color: var(--text-3); }
+
+/* ================================================================
+   BULK SELECT / ACTION BAR  (Feature 3)
+   ================================================================ */
+.bulk-action-bar {
+  display: flex; align-items: center; gap: .6rem;
+  background: #fff8f0; border: 1.5px solid #fcd34d;
+  border-radius: var(--r); padding: .55rem .9rem;
+  margin-bottom: .6rem; flex-wrap: wrap;
+}
+[data-theme="dark"] .bulk-action-bar { background: #2a2310; border-color: #78350f; }
+
+.bulk-count { font-size: .82rem; font-weight: 600; color: #92400e; flex: 1; }
+[data-theme="dark"] .bulk-count { color: #fcd34d; }
+
+.btn-bulk-toggle {
+  background: none; border: 1.5px solid var(--border-md);
+  border-radius: var(--r-sm); padding: .3rem .65rem;
+  font-size: .78rem; font-weight: 600; cursor: pointer;
+  color: var(--text-2); font-family: inherit;
+  transition: all .12s; white-space: nowrap;
+}
+.btn-bulk-toggle:hover { background: var(--p-light); border-color: var(--p); color: var(--p); }
+
+.btn-sm { font-size: .78rem !important; padding: .3rem .7rem !important; }
+.btn-danger {
+  background: var(--red-light); color: var(--red);
+  border: 1.5px solid #fca5a5 !important;
+  font-size: .82rem; font-weight: 600; cursor: pointer;
+  border-radius: var(--r-sm); padding: .3rem .7rem;
+  font-family: inherit; transition: all .12s;
+}
+.btn-danger:hover { background: var(--red); color: #fff; border-color: var(--red) !important; }
+
+/* Expense bulk-select */
+.expense-item-bulk { cursor: default !important; }
+.exp-bulk-check { width: 16px; height: 16px; accent-color: var(--red); cursor: pointer; flex-shrink: 0; align-self: center; }
+
+/* Member bulk-select */
+.member-item-bulk { cursor: default !important; }
+.member-bulk-check { width: 16px; height: 16px; accent-color: var(--red); cursor: pointer; flex-shrink: 0; }
+
+/* Group bulk-select */
+.group-card-bulk { cursor: default !important; }
+.group-card-bulk-check-wrap {
+  position: absolute; top: .6rem; left: .6rem;
+  width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+  background: var(--surface); border-radius: 6px; border: 1.5px solid var(--border);
+  z-index: 2;
+}
+.group-bulk-check { width: 16px; height: 16px; accent-color: var(--red); cursor: pointer; }
+
+/* Expense search bar layout - already defined above, extended for flex */
+.exp-search-bar .form-input { flex: 1; margin-bottom: 0 !important; }
+
+/* Member list toolbar */
+.member-list-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .4rem 0 .6rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: .65rem;
+}
+.member-list-title { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text-3); }
+
+/* ================================================================
+   WHATSAPP MEMBER BUTTONS  (Feature 3)
+   ================================================================ */
+.btn-wa-add {
+  background: #f0fdf4; color: #15803d;
+  border: 1.5px solid #86efac;
+  border-radius: var(--r-sm);
+  font-size: .72rem; font-weight: 700;
+  padding: .28rem .5rem; cursor: pointer;
+  font-family: inherit; transition: all .12s;
+  white-space: nowrap; flex-shrink: 0;
+}
+.btn-wa-add:hover { background: #22c55e; color: #fff; border-color: #22c55e; }
+
+.btn-wa-send {
+  background: #dcfce7; color: #25d366;
+  border: 1.5px solid #86efac;
+  border-radius: var(--r-sm);
+  font-size: .9rem; padding: .28rem .5rem;
+  cursor: pointer; font-family: inherit;
+  transition: all .12s; flex-shrink: 0;
+}
+.btn-wa-send:hover { background: #25d366; color: #fff; border-color: #25d366; }
+
+/* Always show WA button (not just on hover) */
+.member-item .btn-wa-add,
+.member-item .btn-wa-send { opacity: 1; }
+
+/* ================================================================
+   BALANCE SUMMARY – ENHANCED  (Feature 4)
+   ================================================================ */
+.bal-summary-hdr {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: .5rem;
+  align-items: center;
+  padding: .4rem .75rem .4rem 0;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: .4rem;
+  font-size: .68rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .08em; color: var(--text-3);
+}
+.bal-col-name { text-align: left; }
+.bal-col-paid { text-align: right; min-width: 80px; }
+.bal-col-status { text-align: right; min-width: 110px; }
+
+.bal-item-detailed {
+  display: grid !important;
+  grid-template-columns: 1fr auto auto;
+  gap: .5rem;
+  align-items: center;
+  padding: .6rem .75rem .6rem 0 !important;
+}
+.bal-item-detailed .balance-person { justify-self: start; }
+.bal-item-detailed .b-name { font-size: .875rem; }
+.bal-paid-amt {
+  font-size: .82rem; font-weight: 700; color: var(--p);
+  text-align: right; min-width: 80px;
+}
+.bal-item-detailed .balance-pill {
+  font-size: .72rem !important; white-space: nowrap;
+  min-width: 110px; text-align: center;
+}
+
+@media (max-width: 480px) {
+  .bal-summary-hdr { grid-template-columns: 1fr auto; }
+  .bal-col-paid { display: none; }
+  .bal-item-detailed { grid-template-columns: 1fr auto; }
+  .bal-paid-amt { display: none; }
+  .bal-item-detailed .balance-pill { min-width: unset; }
+}
+
+/* ================================================================
+   PIN LOCK – better UX for boot-time PIN
+   ================================================================ */
+.pin-lock-overlay {
+  z-index: 9999 !important; /* Ensure it's above everything */
+}
+
+/* ================================================================
+   RESPONSIVE TWEAKS FOR NEW FEATURES
+   ================================================================ */
+@media (max-width: 600px) {
+  .ct-select-list { max-height: 140px; }
+  .bulk-action-bar { padding: .45rem .65rem; }
+  .exp-search-bar { flex-wrap: wrap; }
+  .member-list-toolbar { padding: .3rem 0 .45rem; }
+}
+
+@media (min-width: 1024px) {
+  /* Desktop: show member WA button always */
+  .member-item .member-remove { opacity: 1; }
+  .ct-select-list { max-height: 220px; }
+}
+

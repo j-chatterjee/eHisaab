@@ -167,7 +167,15 @@
           <h2 class="page-title">Your Groups</h2>
           <p class="subtitle">Track shared expenses for trips, parties &amp; more</p>
         </div>
-        <button class="btn btn-primary btn-new-group-inline" onclick="openNewGroupModal()">+ New Group</button>
+        <div style="display:flex;gap:.5rem;align-items:center">
+          <button class="btn-bulk-toggle" id="groupBulkToggleBtn" onclick="toggleGroupBulkMode()" title="Select groups to delete">&#x2610; Select</button>
+          <button class="btn btn-primary btn-new-group-inline" onclick="openNewGroupModal()">+ New Group</button>
+        </div>
+      </div>
+      <div id="groupBulkBar" class="bulk-action-bar hidden">
+        <span id="groupBulkCount" class="bulk-count">0 selected</span>
+        <button class="btn btn-danger btn-sm" onclick="bulkDeleteGroups()">&#x1F5D1; Delete Selected</button>
+        <button class="btn btn-ghost btn-sm" onclick="toggleGroupBulkMode()">Cancel</button>
       </div>
       <div id="groupList" class="group-grid"></div>
       <div id="emptyGroups" class="empty-state hidden">
@@ -215,6 +223,12 @@
       <div id="tabExpenses" class="tab-content active">
         <div class="exp-search-bar">
           <input type="text" id="expSearchInput" class="form-input" placeholder="&#x1F50D; Search expenses..." oninput="filterExpenses(this.value)" />
+          <button class="btn-bulk-toggle" id="expBulkToggleBtn" onclick="toggleExpBulkMode()" title="Select multiple to delete">&#x2610; Select</button>
+        </div>
+        <div id="expBulkBar" class="bulk-action-bar hidden">
+          <span id="expBulkCount" class="bulk-count">0 selected</span>
+          <button class="btn btn-danger btn-sm" onclick="bulkDeleteExpenses()">&#x1F5D1; Delete Selected</button>
+          <button class="btn btn-ghost btn-sm" onclick="toggleExpBulkMode()">Cancel</button>
         </div>
         <div id="expenseList" class="expense-list"></div>
         <div id="emptyExpenses" class="empty-state hidden">
@@ -229,6 +243,10 @@
       <div id="tabBalances" class="tab-content hidden">
         <div id="drinkCostPanel"></div>
         <div id="expListPanel"></div>
+        <div class="section-label-row" style="margin-bottom:.5rem">
+          <span class="section-label">&#x2696;&#xFE0F; Member Balances</span>
+          <span class="section-label-hint">Who paid &amp; what each member owes / gets back</span>
+        </div>
         <div id="balanceSummary" class="balance-summary"></div>
         <div class="settle-section">
           <div class="section-label-row">
@@ -245,6 +263,15 @@
         <div class="bulk-add-wrap" id="bulkAddWrap">
           <textarea id="bulkMembersInput" class="form-input form-textarea" placeholder="Add members (one per line)…" rows="3"></textarea>
           <button class="btn btn-outline" style="width:100%;margin-top:.5rem" onclick="bulkAddMembers()">+ Add Members</button>
+        </div>
+        <div class="member-list-toolbar">
+          <span class="member-list-title">Members</span>
+          <button class="btn-bulk-toggle" id="memberBulkToggleBtn" onclick="toggleMemberBulkMode()" title="Select multiple to remove">&#x2610; Select</button>
+        </div>
+        <div id="memberBulkBar" class="bulk-action-bar hidden">
+          <span id="memberBulkCount" class="bulk-count">0 selected</span>
+          <button class="btn btn-danger btn-sm" onclick="bulkDeleteMembers()">&#x1F5D1; Remove Selected</button>
+          <button class="btn btn-ghost btn-sm" onclick="toggleMemberBulkMode()">Cancel</button>
         </div>
         <div id="memberList" class="member-list"></div>
         <!-- Party glass setup (shown for Party+alcohol groups) -->
@@ -370,7 +397,7 @@
 
         </div>
       </div>
-      <div id="newGroupContactsNote" class="contacts-auto-note hidden"></div>
+      <div id="newGroupContactsSection" class="new-group-contacts-section"></div>
       <div class="modal-footer">
         <button class="btn btn-ghost" onclick="closeModal('modalNewGroup')">Cancel</button>
         <button class="btn btn-primary" onclick="createGroup()">Create Group</button>
@@ -392,6 +419,13 @@
         <div class="form-group">
           <label class="form-label">Member Name</label>
           <input type="text" id="inputNewMember" class="form-input" placeholder="e.g. Diana" maxlength="30" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">WhatsApp Number <span style="color:var(--text-3);font-weight:400">(optional)</span></label>
+          <div class="input-icon-wrap">
+            <span class="input-icon">📱</span>
+            <input type="tel" id="inputNewMemberPhone" class="form-input with-icon" placeholder="10-digit mobile number" maxlength="13" />
+          </div>
         </div>
       </div>
       <div class="modal-footer">
@@ -504,6 +538,33 @@
       <div class="modal-footer">
         <button class="btn btn-ghost" onclick="closeModal('modalSettle')">Cancel</button>
         <button class="btn btn-success" onclick="recordSettlement()">✓ Mark Settled</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Member WhatsApp Modal -->
+  <div id="modalMemberWA" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-title-icon">📱</span>
+          <h3>Add WhatsApp Number</h3>
+        </div>
+        <button class="modal-close" onclick="closeModal('modalMemberWA')">&#x2715;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-hint">Add a WhatsApp number for <strong id="memberWAName"></strong> to send payment reminders.</p>
+        <div class="form-group">
+          <label class="form-label">WhatsApp / Mobile Number</label>
+          <div class="input-icon-wrap">
+            <span class="input-icon">📱</span>
+            <input type="tel" id="memberWAInput" class="form-input with-icon" placeholder="10-digit number" maxlength="13" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('modalMemberWA')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveMemberWA()">&#x2705; Save Number</button>
       </div>
     </div>
   </div>
