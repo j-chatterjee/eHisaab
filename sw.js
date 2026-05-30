@@ -1,14 +1,15 @@
 /* ================================================================
    eHisaab – Service Worker
    Strategy:
-     • App shell (HTML/CSS/JS/manifest) → Cache-first, update in bg
+     • App shell (HTML/CSS/JS/manifest) → Network-first, fallback to cache
      • Google Fonts CSS                 → Network-first, fallback to cache
-     • Font files                       → Cache-first (long-lived)
+     • Font files                       → Cache-first (immutable by URL)
      • Everything else                  → Network-first, fallback to cache
+   Bump CACHE_NAME version on each deploy to purge old caches.
    ================================================================ */
 
-const CACHE_NAME    = 'ehisaab-v1';
-const FONT_CACHE    = 'ehisaab-fonts-v1';
+const CACHE_NAME    = 'ehisaab-v8';
+const FONT_CACHE    = 'ehisaab-fonts-v2';
 
 // Files that make up the app shell — cached on install
 const APP_SHELL = [
@@ -28,7 +29,7 @@ self.addEventListener('install', event => {
   );
 });
 
-// ── Activate: remove stale caches ────────────────────────────
+// ── Activate: remove ALL old caches when version changes ─────
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys =>
@@ -60,9 +61,9 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // App shell files → cache-first, revalidate in background
+  // App shell files → network-first (get latest from server), fallback to cache when offline
   if (url.origin === self.location.origin) {
-    event.respondWith(cacheFirstWithNetwork(request, CACHE_NAME));
+    event.respondWith(networkFirstWithCache(request, CACHE_NAME));
     return;
   }
 
