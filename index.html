@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>eHisaab – Split Expenses Easily</title>
   <link rel="stylesheet" href="styles.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -10,7 +10,9 @@
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#6c63ff" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="eHisaab" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%236c63ff'/><text y='.88em' font-size='68' x='16'>&#x1F4B8;</text></svg>" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x1F4B8;</text></svg>" />
 </head>
 <body>
@@ -42,6 +44,12 @@
     </div>
     <div class="auth-right">
       <div class="auth-card">
+        <!-- Mobile-only brand (shown when left panel is hidden) -->
+        <div class="auth-mobile-brand">
+          <span class="amb-icon">💸</span>
+          <span class="amb-name">eHisaab</span>
+          <span class="amb-tag">Split bills. Not friendships.</span>
+        </div>
         <!-- Tab Switch -->
         <div class="auth-tabs">
           <button class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">Sign In</button>
@@ -677,5 +685,28 @@
   <div id="toast" class="toast hidden"></div>
 
   <script src="app.js"></script>
+  <script>
+    // Register service worker for PWA offline support
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => {
+            // Check for updates every time the app is opened
+            reg.addEventListener('updatefound', () => {
+              const newSW = reg.installing;
+              newSW.addEventListener('statechange', () => {
+                if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+                  // New version available — show a subtle toast if app is loaded
+                  if (typeof showToast === 'function') {
+                    showToast('\u2728 App updated! Refresh for the latest version.', 'info');
+                  }
+                }
+              });
+            });
+          })
+          .catch(err => console.warn('SW registration failed:', err));
+      });
+    }
+  </script>
 </body>
 </html>
