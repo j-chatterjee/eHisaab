@@ -768,7 +768,8 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--r);
   padding: .85rem 1.1rem;
-  display: flex; align-items: center; gap: .85rem;
+  display: flex; align-items: center; gap: .75rem;
+  flex-wrap: wrap;
   transition: box-shadow .12s;
 }
 .member-item:hover { box-shadow: var(--shadow-sm); }
@@ -777,7 +778,7 @@ body {
   color: #fff; font-weight: 700; font-size: .9rem;
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
-.member-info { flex: 1; }
+.member-info { flex: 1; min-width: 120px; }
 .member-name { font-weight: 600; font-size: .925rem; }
 .member-meta { font-size: .775rem; color: var(--text-3); margin-top: .1rem; }
 .member-bal { font-size: .72rem !important; flex-shrink: 0; }
@@ -788,6 +789,10 @@ body {
   opacity: 0;
 }
 .member-item:hover .member-remove { opacity: 1; }
+/* On touch devices, always show delete — no hover available */
+@media (hover: none) {
+  .member-remove { opacity: 1; }
+}
 .member-remove:hover { background: var(--red-light); color: var(--red); }
 
 /* ================================================================
@@ -861,6 +866,7 @@ body {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   display: flex; flex-direction: column; gap: 1rem;
+  flex: 1;
 }
 .modal-footer {
   padding: 1rem 1.4rem;
@@ -1113,7 +1119,7 @@ body {
   .tabs .tab { font-size: .78rem; padding: .5rem .35rem; }
 
   .form-row { flex-direction: column; }
-  .modal { border-radius: var(--r-lg) var(--r-lg) 0 0; max-height: 92vh; }
+  .modal { border-radius: var(--r-lg) var(--r-lg) 0 0; max-height: 96vh; max-height: 96dvh; }
   .modal-overlay { align-items: flex-end; padding: 0; }
 
   .auth-screen { background: var(--gradient-hero); }
@@ -1880,10 +1886,11 @@ body {
    ================================================================ */
 .new-group-contacts-section {
   border-top: 1px solid var(--border);
-  padding: .85rem 1.25rem 1rem;
-  background: #faf9ff;
+  padding: .75rem .2rem .25rem;
+  background: transparent;
+  margin-top: .25rem;
 }
-[data-theme="dark"] .new-group-contacts-section { background: #1e1c30; }
+[data-theme="dark"] .new-group-contacts-section { border-top-color: var(--border); }
 
 .ct-select-hdr {
   display: flex; align-items: center; justify-content: space-between;
@@ -2064,10 +2071,14 @@ body {
    RESPONSIVE TWEAKS FOR NEW FEATURES
    ================================================================ */
 @media (max-width: 600px) {
-  .ct-select-list { max-height: 140px; }
+  .ct-select-list { max-height: 130px; }
   .bulk-action-bar { padding: .45rem .65rem; }
   .exp-search-bar { flex-wrap: wrap; }
   .member-list-toolbar { padding: .3rem 0 .45rem; }
+  /* On mobile: member row - push WA/delete to a second line if needed */
+  .member-item { padding: .7rem .85rem; gap: .6rem; }
+  .member-bal { font-size: .68rem !important; }
+  .btn-wa-add, .btn-wa-send { font-size: .7rem; padding: .25rem .4rem; }
 }
 
 @media (min-width: 1024px) {
