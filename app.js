@@ -1013,6 +1013,57 @@ function bulkAddMembers() {
   showToast('\u2705 ' + added + ' member' + (added > 1 ? 's' : '') + ' added');
 }
 
+// ─── IMPORT CONTACTS INTO GROUP ───────────────────────────────
+function openGroupContactsImport() {
+  const g = getGroup();
+  if (!g) return;
+  const contacts = getContacts();
+  const list = document.getElementById('gcImportList');
+  if (!list) return;
+  // Filter out contacts already in the group
+  const available = contacts.filter(function(c) {
+    return !g.members.some(function(m) { return m.toLowerCase() === c.name.toLowerCase(); });
+  });
+  if (available.length === 0) {
+    list.innerHTML = '<div class="gc-import-empty">\u2139\ufe0f All your contacts are already members, or you have no contacts saved.<br><span style="font-size:.8rem;color:var(--text-3)">Add contacts via the Contacts menu in your profile.</span></div>';
+  } else {
+    list.innerHTML = available.map(function(c) {
+      var ph = c.phone ? '\ud83d\udcf1 +91 ' + c.phone.replace(/\D/g,'').slice(-10) : '';
+      return '<label class="gc-import-item">'
+        + '<input type="checkbox" class="gc-import-check" value="' + escHtml(c.name) + '" checked />'
+        + '<div class="gc-import-av" style="background:' + avatarColor(c.name) + '">' + c.name.charAt(0).toUpperCase() + '</div>'
+        + '<div class="gc-import-info">'
+        + '<span class="gc-import-name">' + escHtml(c.name) + '</span>'
+        + (ph ? '<span class="gc-import-phone">' + ph + '</span>' : '')
+        + '</div>'
+        + '</label>';
+    }).join('');
+  }
+  openModal('modalGroupContacts');
+}
+function addContactsToGroup() {
+  const g = getGroup();
+  if (!g) return;
+  const checked = [...document.querySelectorAll('#gcImportList .gc-import-check:checked')];
+  if (checked.length === 0) { showToast('\u26a0\ufe0f Select at least one contact', 'error'); return; }
+  let added = 0;
+  checked.forEach(function(cb) {
+    const name = cb.value;
+    if (!g.members.some(function(m) { return m.toLowerCase() === name.toLowerCase(); })) {
+      g.members.push(name);
+      logActivity(g, '\ud83d\udc64 ' + name + ' imported from contacts');
+      added++;
+    }
+  });
+  if (added === 0) { showToast('\u26a0\ufe0f No new members added', 'error'); return; }
+  saveGroups();
+  closeModal('modalGroupContacts');
+  renderMembers();
+  renderStatsBar();
+  renderPartySetupInGroup();
+  showToast('\u2705 ' + added + ' contact' + (added !== 1 ? 's' : '') + ' added as member' + (added !== 1 ? 's' : ''));
+}
+
 // ─── PARTY SETUP IN GROUP DETAIL ──────────────────────────────
 function renderPartySetupInGroup() {
   const setupSection = document.getElementById('partySetupSection');
@@ -1031,6 +1082,7 @@ function renderPartySetupInGroup() {
   if (!pd.bottleCount)      pd.bottleCount      = {};
   if (!pd.bottlePaidBy)     pd.bottlePaidBy     = {};
   if (!pd.memberGlassSize)  pd.memberGlassSize  = {};
+  if (!pd.bottlePackaging)  pd.bottlePackaging  = {};
   members.forEach(m => { if (!pd.memberGlassSize[m]) pd.memberGlassSize[m] = ML_PER_GLASS; });
   pd.drinks.forEach(drink => {
     if (!pd.glasses[drink]) pd.glasses[drink] = {};
@@ -1054,12 +1106,14 @@ function renderPartySetupInGroup() {
   pd.drinks.forEach(drink => {
     let memberRows = '';
     const isBotUnit = BOTTLE_UNIT_DRINKS.includes(drink);
+    const pkgType   = isBotUnit ? (pd.bottlePackaging?.[drink] || 'bottle') : 'bottle';
+    const pkgLabel  = pkgType === 'can' ? '\ud83e\udd64 cans' : '\ud83c\udf7a bottles';
     members.forEach(member => {
       const count  = pd.glasses[drink][member] ?? 1;
       const mgs    = pd.memberGlassSize?.[member] || ML_PER_GLASS;
       const safeId = 'gd_' + drink.replace(/[^a-zA-Z0-9]/g,'_') + '__' + member.replace(/[^a-zA-Z0-9]/g,'_');
       const sizePart = isBotUnit
-        ? '<span class="gc-unit-label">\ud83c\udf7a bottles</span>'
+        ? `<span class="gc-unit-label">${pkgLabel}</span>`
         : `<div class="glass-size-btns">
           <button type="button" class="glass-size-btn${mgs===30?' active':''}" onclick="gdSetMemberGlassSize('${escHtml(member)}',30)">30ml</button>
           <button type="button" class="glass-size-btn${mgs===60?' active':''}" onclick="gdSetMemberGlassSize('${escHtml(member)}',60)">60ml</button>
@@ -1090,21 +1144,40 @@ function renderPartySetupInGroup() {
   const bottleDrinks = pd.drinks.filter(d => BOTTLE_DRINKS.includes(d));
   let bottleHtml = '';
   bottleDrinks.forEach(drink => {
-    const SIZES    = BOTTLE_UNIT_DRINKS.includes(drink) ? [330, 500, 650, 1000] : [375, 500, 750, 1000];
-    const curSize  = pd.bottleSize[drink]  || (BOTTLE_UNIT_DRINKS.includes(drink) ? 330 : 750);
-    const curCount = pd.bottleCount[drink] || 1;
-    const curPrice = pd.bottlePrice[drink] || 0;
+    const isBotUnit  = BOTTLE_UNIT_DRINKS.includes(drink);
+    const curPkg     = isBotUnit ? (pd.bottlePackaging?.[drink] || 'bottle') : 'bottle';
+    const isCanMode  = curPkg === 'can';
+    // Sizes: for beer can → 330ml / 500ml; for beer bottle → 330/500/650/1000; for spirits → 375/500/750/1000
+    const SIZES      = isBotUnit
+      ? (isCanMode ? [330, 500] : [330, 500, 650, 1000])
+      : [375, 500, 750, 1000];
+    const defaultSz  = isBotUnit ? (isCanMode ? 330 : 330) : 750;
+    const curSize    = pd.bottleSize[drink] || defaultSz;
+    const curCount   = pd.bottleCount[drink] || 1;
+    const curPrice   = pd.bottlePrice[drink] || 0;
     pd.bottleSize[drink]  = curSize;
     pd.bottleCount[drink] = curCount;
     const sd = drink.replace(/[^a-zA-Z0-9]/g, '_');
     const sizeHtml = SIZES.map(s =>
       `<button type="button" class="bottle-size-btn${s === curSize ? ' active' : ''}" data-sz="${s}" onclick="gdSetBottleSize('${escHtml(drink)}',${s})">${s < 1000 ? s + 'ml' : '1L'}</button>`
     ).join('');
+    const unitLabel  = isCanMode ? 'Cans' : 'Bottles';
+    const unitIcon   = isCanMode ? '\ud83e\udd64' : '\ud83c\udf7a';
+    // Packaging toggle (only for Beer)
+    const pkgToggle  = isBotUnit ? `
+      <div class="bc-row">
+        <span class="bc-label">Packaging</span>
+        <div class="bc-pkg-btns">
+          <button type="button" class="bc-pkg-btn${!isCanMode ? ' active' : ''}" onclick="gdSetBottlePackaging('${escHtml(drink)}','bottle')">\ud83c\udf7a Bottle</button>
+          <button type="button" class="bc-pkg-btn${isCanMode ? ' active' : ''}" onclick="gdSetBottlePackaging('${escHtml(drink)}','can')">\ud83e\udd64 Can</button>
+        </div>
+      </div>` : '';
     bottleHtml += `<div class="bottle-calc-section">
       <div class="bc-drink-name">${escHtml(drink)}</div>
+      ${pkgToggle}
       <div class="bc-row"><span class="bc-label">Size</span><div class="bc-size-btns">${sizeHtml}</div></div>
       <div class="bc-row">
-        <span class="bc-label">No. of Bottles</span>
+        <span class="bc-label">No. of ${unitLabel}</span>
         <div class="bc-count-wrap">
           <button type="button" class="bc-count-btn" onclick="gdSetBottleCount('${escHtml(drink)}', Math.max(1,(getGroup().partyDetails.bottleCount?.['${escHtml(drink)}']||1)-1))">\u2212</button>
           <input type="number" id="gdbccount_${sd}" class="bc-count-input" value="${curCount}" min="1" max="50" step="1" oninput="gdSetBottleCount('${escHtml(drink)}', this.value)" />
@@ -1112,7 +1185,7 @@ function renderPartySetupInGroup() {
         </div>
       </div>
       <div class="bc-row">
-        <span class="bc-label">Price / bottle</span>
+        <span class="bc-label">Price / ${unitLabel.slice(0,-1).toLowerCase()}</span>
         <div class="bc-price-wrap">
           <span class="bc-rupee">\u20b9</span>
           <input type="number" id="gdbcprice_${sd}" class="bc-price-input" placeholder="0" min="0" step="1" value="${curPrice || ''}" oninput="gdSetBottlePrice('${escHtml(drink)}', this.value)" />
@@ -1203,6 +1276,17 @@ function gdSetBottlePaidBy(drink, member) {
   // Refresh balance tab if it's active
   const balTab = document.getElementById('tabBalances');
   if (balTab && !balTab.classList.contains('hidden')) renderBalances();
+}
+function gdSetBottlePackaging(drink, pkg) {
+  const g = getGroup();
+  if (!g?.partyDetails) return;
+  if (!g.partyDetails.bottlePackaging) g.partyDetails.bottlePackaging = {};
+  g.partyDetails.bottlePackaging[drink] = pkg;
+  // Reset to default size for the chosen packaging
+  const isCanMode = pkg === 'can';
+  g.partyDetails.bottleSize[drink] = isCanMode ? 330 : 330;
+  saveGroups();
+  renderPartySetupInGroup();
 }
 function gdSetMemberGlassSize(member, size) {
   const g = getGroup();
@@ -1674,14 +1758,36 @@ function sendWhatsAppToMember(memberName) {
   const g = getGroup();
   const { balances } = calculateBalances(g);
   const bal = Math.round((balances[memberName] || 0) * 100) / 100;
-  let msg;
+
+  // Build per-expense breakdown for this member
+  const expLines = [];
+  (g.expenses || []).forEach(exp => {
+    const split = (exp.splits || []).find(s => s.name === memberName);
+    if (!split || parseFloat(split.amount) < 0.01) return;
+    const share = fmt(parseFloat(split.amount));
+    const desc  = exp.desc || 'Expense';
+    const date  = exp.date ? ' [' + formatDate(exp.date) + ']' : '';
+    const who   = exp.paidBy !== memberName ? ' (paid by ' + exp.paidBy + ')' : ' (you paid)';
+    expLines.push('  ' + (expLines.length + 1) + '. ' + desc + date + ' — ' + share + who);
+  });
+
+  let msg = 'Hi ' + memberName + '! \ud83d\udc4b\n\neHisaab \ud83d\udcb8 Reminder\n\n\ud83d\udccb Group: ' + (g ? g.name : '') + '\n';
   if (bal < -0.005) {
-    msg = 'Hi ' + memberName + '! \ud83d\udc4b\n\neHisaab \ud83d\udcb8 Reminder\n\n\ud83d\udccb Group: ' + (g ? g.name : '') + '\n\ud83d\udcb3 You owe ' + fmt(-bal) + '\n\nPlease transfer at your earliest convenience. \ud83d\ude4f';
+    msg += '\ud83d\udcb3 You owe: ' + fmt(-bal);
   } else if (bal > 0.005) {
-    msg = 'Hi ' + memberName + '! \ud83d\udc4b\n\neHisaab \ud83d\udcb8 Update\n\n\ud83d\udccb Group: ' + (g ? g.name : '') + '\n\u2705 You are owed ' + fmt(bal);
+    msg += '\u2705 You are owed: ' + fmt(bal);
   } else {
-    msg = 'Hi ' + memberName + '! \ud83d\udc4b\n\neHisaab \ud83d\udcb8\n\n\ud83d\udccb Group: ' + (g ? g.name : '') + '\n\u2714\ufe0f All settled up!';
+    msg += '\u2714\ufe0f All settled up!';
   }
+
+  if (expLines.length > 0) {
+    const MAX = 15;
+    msg += '\n\n\ud83d\udcca Expense Breakdown:\n' + expLines.slice(0, MAX).join('\n');
+    if (expLines.length > MAX) msg += '\n  ...and ' + (expLines.length - MAX) + ' more expense(s)';
+  }
+
+  if (bal < -0.005) msg += '\n\nPlease transfer at your earliest convenience. \ud83d\ude4f';
+
   window.open('https://wa.me/91' + phone + '?text=' + encodeURIComponent(msg), '_blank', 'noopener,noreferrer');
 }
 
@@ -1969,8 +2075,30 @@ function openSettleModal(s) {
   state.pendingSettle = s;
   document.getElementById('settleDescription').innerHTML =
     `<strong style="color:#ef4444">${escHtml(s.from)}</strong> pays <strong style="color:#22c55e">${escHtml(s.to)}</strong>`;
+  document.getElementById('settleTotalOwed').innerHTML =
+    `<span class="settle-owed-label">Total owed:</span> <strong>${fmt(s.amount)}</strong>`;
   document.getElementById('inputSettleAmount').value = s.amount.toFixed(2);
+  const box = document.getElementById('settleRemainingBox');
+  if (box) box.classList.add('hidden');
   openModal('modalSettle');
+}
+function updateSettleRemaining() {
+  const s = state.pendingSettle;
+  if (!s) return;
+  const paid = parseFloat(document.getElementById('inputSettleAmount').value) || 0;
+  const remaining = Math.round((s.amount - paid) * 100) / 100;
+  const box = document.getElementById('settleRemainingBox');
+  if (!box) return;
+  if (remaining > 0.005) {
+    box.innerHTML = `<span class="sr-icon">⏳</span> Remaining balance: <strong>${fmt(remaining)}</strong> &mdash; will stay as pending`;
+    box.className = 'settle-remaining-box settle-remaining-partial';
+  } else if (paid > s.amount + 0.005) {
+    box.innerHTML = `<span class="sr-icon">⚠️</span> Amount exceeds total owed (${fmt(s.amount)})`;
+    box.className = 'settle-remaining-box settle-remaining-over';
+  } else {
+    box.innerHTML = `<span class="sr-icon">✅</span> Full amount paid — debt will be fully cleared`;
+    box.className = 'settle-remaining-box settle-remaining-full';
+  }
 }
 function recordSettlement() {
   const s      = state.pendingSettle;
@@ -1978,11 +2106,17 @@ function recordSettlement() {
   if (!amount || amount <= 0) { showToast('\u26a0\ufe0f Enter a valid amount', 'error'); return; }
   const g = getGroup();
   g.settlements.push({ id: uid(), from: s.from, to: s.to, amount, date: today() });
+  logActivity(g, '\u2705 ' + s.from + ' paid ' + fmt(amount) + ' to ' + s.to);
   saveGroups();
   closeModal('modalSettle');
   renderBalances();
   renderStatsBar();
-  showToast('\u2705 Settlement recorded \u2014 ' + fmt(amount) + '. Tap \ud83d\udd17 Share & Sync to notify others.');
+  const remaining = Math.round((s.amount - amount) * 100) / 100;
+  if (remaining > 0.005) {
+    showToast('\u2705 ' + fmt(amount) + ' recorded. Remaining ' + fmt(remaining) + ' still pending.');
+  } else {
+    showToast('\u2705 Fully settled! ' + fmt(amount) + ' paid. Tap \ud83d\udd17 Share & Sync to notify others.');
+  }
 }
 
 // ─── WHATSAPP BILL SENDER ─────────────────────────────────────
@@ -1995,8 +2129,29 @@ function sendWhatsApp(fromName, toName, amount) {
     showToast('\u26a0\ufe0f No phone saved for ' + fromName + '. Use the +\ud83d\udcf1 button in Members tab to add.', 'error');
     return;
   }
+
+  // Build breakdown: expenses where fromName has a share and toName paid
+  const expLines = [];
+  (g.expenses || []).forEach(exp => {
+    if (exp.paidBy !== toName) return;
+    const split = (exp.splits || []).find(s => s.name === fromName);
+    if (!split || parseFloat(split.amount) < 0.01) return;
+    const share = fmt(parseFloat(split.amount));
+    const desc  = exp.desc || 'Expense';
+    const date  = exp.date ? ' [' + formatDate(exp.date) + ']' : '';
+    expLines.push('  ' + (expLines.length + 1) + '. ' + desc + date + ' — ' + share);
+  });
+
   const intlPhone = '91' + phone;
-  const msg = 'Hi ' + fromName + '! \ud83d\udc4b\n\nReminder from eHisaab \ud83d\udcb8\n\n\ud83d\udccb Group: ' + (g ? g.name : '') + '\n\ud83d\udcb3 You owe ' + toName + ' ' + fmt(amount) + '\n\nPlease transfer at your earliest convenience. \ud83d\ude4f';
+  let msg = 'Hi ' + fromName + '! \ud83d\udc4b\n\nReminder from eHisaab \ud83d\udcb8\n\n\ud83d\udccb Group: ' + (g ? g.name : '') + '\n\ud83d\udcb3 You owe ' + toName + ': ' + fmt(amount);
+
+  if (expLines.length > 0) {
+    const MAX = 15;
+    msg += '\n\n\ud83d\udcca Expense Breakdown (paid by ' + toName + '):\n' + expLines.slice(0, MAX).join('\n');
+    if (expLines.length > MAX) msg += '\n  ...and ' + (expLines.length - MAX) + ' more expense(s)';
+  }
+
+  msg += '\n\nPlease transfer at your earliest convenience. \ud83d\ude4f';
   window.open('https://wa.me/' + intlPhone + '?text=' + encodeURIComponent(msg), '_blank', 'noopener,noreferrer');
 }
 
@@ -2265,7 +2420,6 @@ function printGroup() {
   }
   const allExps    = [...g.expenses, ...virtualExps];
   const totalSpent = allExps.reduce((s, e) => s + parseFloat(e.amount), 0);
-  const avgPerPerson = g.members.length > 0 ? totalSpent / g.members.length : 0;
   const printDate  = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
 
   // Date range of expenses
@@ -2545,7 +2699,7 @@ body{font-family:'Inter','Segoe UI',Arial,sans-serif;font-size:13px;color:#1e1b4
 .content{padding:28px 36px}
 
 /* ── Stats grid ── */
-.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px}
+.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:28px}
 .stat-card{background:#f5f3ff;border:1.5px solid #e0e7ff;border-radius:12px;padding:14px 16px;text-align:center}
 .stat-card.hl{background:linear-gradient(135deg,#ede9fe,#ddd6fe);border-color:#c4b5fd}
 .sc-val{font-size:1.3rem;font-weight:800;color:#4c1d95;line-height:1.1}
@@ -2640,7 +2794,7 @@ body{font-family:'Inter','Segoe UI',Arial,sans-serif;font-size:13px;color:#1e1b4
   @page{margin:10mm 12mm;size:A4}
   body{background:#fff!important;font-size:11.5px}
   .page{box-shadow:none;max-width:100%}
-  .stats-grid{grid-template-columns:repeat(4,1fr)!important}
+  .stats-grid{grid-template-columns:repeat(3,1fr)!important}
   .two-col{page-break-inside:avoid}
   .exp-table tbody tr{page-break-inside:avoid}
   .settle-card{page-break-inside:avoid}
@@ -2695,11 +2849,6 @@ body{font-family:'Inter','Segoe UI',Arial,sans-serif;font-size:13px;color:#1e1b4
         <div class="sc-val">${fmtP(totalSpent)}</div>
         <div class="sc-lbl">Total Spent</div>
         <div class="sc-sub">${dateRange}</div>
-      </div>
-      <div class="stat-card">
-        <div class="sc-val">${fmtP(avgPerPerson)}</div>
-        <div class="sc-lbl">Avg per Person</div>
-        <div class="sc-sub">across ${g.members.length} members</div>
       </div>
       <div class="stat-card">
         <div class="sc-val">${allExps.length}</div>
